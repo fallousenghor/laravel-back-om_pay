@@ -59,7 +59,11 @@ class TransfertController extends Controller
     public function initierTransfert(InitierTransfertRequest $request)
     {
         $utilisateur = $request->user();
-        $result = $this->transfertService->initierTransfert($utilisateur, $request->validated());
+        $data = $request->validated();
+        // Map the field names to match what the service expects
+        $data['telephoneDestinataire'] = $data['numeroTelephoneDestinataire'];
+        $data['note'] = $data['description'] ?? $data['note'] ?? null;
+        $result = $this->transfertService->initierTransfert($utilisateur, $data);
         return $this->responseFromResult($result);
     }
 

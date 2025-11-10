@@ -18,6 +18,7 @@ class Transfert extends Transaction
     protected $fillable = [
         'id_transaction',
         'id_expediteur',
+        'id_destinataire',
         'numero_telephone_destinataire',
         'nom_destinataire',
         'note',

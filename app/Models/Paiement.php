@@ -12,10 +12,19 @@ class Paiement extends Transaction
 {
     use HasFactory;
 
-    protected $table = 'paiements';
+    protected $table = 'transactions';
 
     protected $fillable = [
-        'id_transaction',
+        'id_utilisateur',
+        'type',
+        'montant',
+        'devise',
+        'statut',
+        'frais',
+        'reference',
+        'nom_marchand',
+        'categorie_marchand',
+        'note',
         'id_marchand',
         'mode_paiement',
         'details_paiement',
@@ -25,14 +34,10 @@ class Paiement extends Transaction
 
     protected $casts = [
         'details_paiement' => 'array',
+        'date_transaction' => 'datetime',
     ];
 
     // Relationships
-    public function transaction(): BelongsTo
-    {
-        return $this->belongsTo(Transaction::class, 'id_transaction');
-    }
-
     public function marchand(): BelongsTo
     {
         return $this->belongsTo(Marchand::class, 'id_marchand');

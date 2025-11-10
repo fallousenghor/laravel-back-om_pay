@@ -22,7 +22,8 @@ class SaisirCodeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code' => 'required|string|size:8|regex:/^[0-9]{8}$/',
+            // Allow alphanumeric merchant codes (letters and digits), exactly 8 chars
+            'code' => 'required|string|size:8|regex:/^[A-Za-z0-9]{8}$/',
         ];
     }
 
@@ -37,7 +38,7 @@ class SaisirCodeRequest extends FormRequest
             'code.required' => 'Le code est requis.',
             'code.string' => 'Le code doit être une chaîne de caractères.',
             'code.size' => 'Le code doit contenir exactement 8 caractères.',
-            'code.regex' => 'Le code doit contenir uniquement des chiffres.',
+            'code.regex' => 'Le code doit contenir uniquement des lettres et des chiffres (alphanumérique).',
         ];
     }
 }

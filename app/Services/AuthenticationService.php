@@ -7,6 +7,7 @@ use App\Models\Utilisateur;
 use App\Models\VerificationCode;
 use App\Models\SessionOmpay;
 use App\Models\QRCode;
+use App\Models\Portefeuille;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
@@ -64,11 +65,39 @@ class AuthenticationService
         $utilisateur = Utilisateur::where('numero_telephone', $verification->numero_telephone)->first();
 
         if (!$utilisateur) {
-            // Premier accès, retourner les informations pour la création du code PIN
-            return [
-                'status' => 'first_access',
+            // Vérifier que le compte Orange Money existe toujours
+            if (!$compte_om) {
+                throw new \Exception("Compte Orange Money introuvable pour ce numéro de téléphone");
+            }
+
+            // Premier accès, créer automatiquement l'utilisateur
+            $utilisateur = Utilisateur::create([
                 'numero_telephone' => $verification->numero_telephone,
-                'token' => $token
+                'prenom' => $compte_om->prenom,
+                'nom' => $compte_om->nom,
+                'email' => null, // Peut être ajouté plus tard
+                'code_pin' => null, // Sera défini lors de la première connexion
+                'numero_cni' => $compte_om->numero_cni,
+                'statut_kyc' => 'verifie'
+            ]);
+
+            // Créer le portefeuille automatiquement avec le solde du compte Orange Money
+            $portefeuille = Portefeuille::create([
+                'id_utilisateur' => $utilisateur->id,
+                'solde' => $compte_om->solde,
+                'devise' => 'XOF',
+            ]);
+
+            // Générer un QR code pour l'utilisateur
+            $qrCode = $this->generateUserQRCode($utilisateur);
+
+            return [
+                'status' => 'user_created',
+                'numero_telephone' => $verification->numero_telephone,
+                'token' => $token,
+                'user' => $utilisateur,
+                'portefeuille' => $portefeuille,
+                'qr_code' => $qrCode
             ];
         }
 
@@ -172,7 +201,22 @@ class AuthenticationService
             throw new \Exception("Utilisateur non trouvé");
         }
 
-        // Vérifier le code PIN
+        // Si l'utilisateur n'a pas de code PIN défini (premier accès), permettre la connexion sans vérification
+        if ($utilisateur->code_pin === null) {
+            // Définir le code PIN pour le premier accès
+            $utilisateur->update(['code_pin' => Hash::make($code_pin)]);
+
+            // Créer une session
+            $session = $this->createSession($utilisateur);
+
+            return [
+                'session_token' => $session->token,
+                'user' => $utilisateur,
+                'first_login' => true
+            ];
+        }
+
+        // Vérifier le code PIN pour les connexions suivantes
         if (!Hash::check($code_pin, $utilisateur->code_pin)) {
             throw new \Exception("Code PIN incorrect");
         }
@@ -182,7 +226,8 @@ class AuthenticationService
 
         return [
             'session_token' => $session->token,
-            'user' => $utilisateur
+            'user' => $utilisateur,
+            'first_login' => false
         ];
     }
 

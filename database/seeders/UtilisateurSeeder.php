@@ -13,8 +13,8 @@ class UtilisateurSeeder extends Seeder
      */
     public function run(): void
     {
-        // Créer des utilisateurs de test avec insertion directe (compatible PostgreSQL)
-        for ($i = 0; $i < 10; $i++) {
+        // Créer 5 utilisateurs de test avec insertion directe (compatible PostgreSQL)
+        for ($i = 0; $i < 5; $i++) {
             $utilisateurId = DB::table('utilisateurs')->insertGetId([
                 'id' => (string) \Illuminate\Support\Str::uuid(),
                 'numero_telephone' => '77' . rand(1000000, 9999999),
@@ -30,11 +30,11 @@ class UtilisateurSeeder extends Seeder
                 'updated_at' => now(),
             ]);
 
-            // Créer le portefeuille avec solde 0 pour les utilisateurs normaux
+            // Créer le portefeuille avec solde aléatoire pour les utilisateurs normaux
             DB::table('portefeuilles')->insert([
                 'id' => (string) \Illuminate\Support\Str::uuid(),
                 'id_utilisateur' => $utilisateurId,
-                'solde' => 0,
+                'solde' => rand(10000, 100000), // Solde entre 10k et 100k XOF
                 'devise' => 'XOF',
                 'derniere_mise_a_jour' => now(),
                 'created_at' => now(),
@@ -51,21 +51,6 @@ class UtilisateurSeeder extends Seeder
                 'updated_at' => now(),
             ]);
 
-            // Créer quelques contacts
-            $numContacts = rand(3, 8);
-            for ($j = 0; $j < $numContacts; $j++) {
-                DB::table('contacts')->insert([
-                    'id' => (string) \Illuminate\Support\Str::uuid(),
-                    'id_utilisateur' => $utilisateurId,
-                    'nom' => $this->getRandomPrenom() . ' ' . $this->getRandomNom(),
-                    'numero_telephone' => '77' . rand(1000000, 9999999),
-                    'photo' => rand(0, 1) ? 'https://via.placeholder.com/100' : null,
-                    'nombre_transactions' => rand(0, 50),
-                    'derniere_transaction' => rand(0, 1) ? now()->subDays(rand(1, 30)) : null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
         }
 
         // Créer un utilisateur administrateur

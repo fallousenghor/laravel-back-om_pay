@@ -68,7 +68,8 @@ class Transaction extends Model
     // Scopes
     public function scopeReussies($query)
     {
-        return $query->where('statut', 'reussie');
+        // 'reussie' stored as 'termine' in DB constraint
+        return $query->where('statut', 'termine');
     }
 
     public function scopeEchouees($query)
@@ -110,13 +111,14 @@ class Transaction extends Model
             return false;
         }
 
-        $this->statut = 'reussie';
+        // DB expects 'termine' for a successful transaction
+        $this->statut = 'termine';
         return $this->save();
     }
 
     public function annuler(): bool
     {
-        if (in_array($this->statut, ['reussie', 'annulee'])) {
+        if (in_array($this->statut, ['termine', 'annulee'])) {
             return false;
         }
 
@@ -142,7 +144,8 @@ class Transaction extends Model
 
     public function estReussie(): bool
     {
-        return $this->statut === 'reussie';
+        // consider 'termine' as successful per DB constraint
+        return $this->statut === 'termine';
     }
 
     public function estEnCours(): bool
@@ -152,6 +155,6 @@ class Transaction extends Model
 
     public function peutEtreAnnulee(): bool
     {
-        return !in_array($this->statut, ['reussie', 'annulee']);
+        return !in_array($this->statut, ['termine', 'annulee']);
     }
 }

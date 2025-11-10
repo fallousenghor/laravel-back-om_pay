@@ -6,6 +6,8 @@ use App\Models\Transfert;
 use App\Models\Transaction;
 use App\Models\Utilisateur;
 use App\Models\Portefeuille;
+use App\Models\OrangeMoney;
+use App\Models\Destinataire;
 use App\Interfaces\TransfertServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -44,17 +46,41 @@ class TransfertService implements TransfertServiceInterface
     // 3.2 Initier un Transfert
     public function initierTransfert($utilisateur, $data)
     {
-        $destinataire = Utilisateur::where('numero_telephone', $data['telephoneDestinataire'])->first();
+        // Vérifier d'abord si le destinataire a un compte Orange Money
+        $compte_om_destinataire = OrangeMoney::where('numero_telephone', $data['telephoneDestinataire'])->first();
 
-        if (!$destinataire) {
+        if (!$compte_om_destinataire) {
             return [
                 'success' => false,
                 'error' => [
                     'code' => 'TRANSFER_001',
-                    'message' => 'Destinataire introuvable'
+                    'message' => 'Le destinataire n\'a pas de compte Orange Money'
                 ],
                 'status' => 404
             ];
+        }
+
+        // Vérifier si le destinataire a un compte OM Pay (le créer automatiquement si nécessaire)
+        $destinataire = Utilisateur::where('numero_telephone', $data['telephoneDestinataire'])->first();
+
+        if (!$destinataire) {
+            // Créer automatiquement le compte OM Pay du destinataire
+            $destinataire = Utilisateur::create([
+                'numero_telephone' => $data['telephoneDestinataire'],
+                'prenom' => $compte_om_destinataire->prenom,
+                'nom' => $compte_om_destinataire->nom,
+                'email' => null,
+                'code_pin' => null, // Sera défini lors de la première connexion du destinataire
+                'numero_cni' => $compte_om_destinataire->numero_cni,
+                'statut_kyc' => 'verifie'
+            ]);
+
+            // Créer le portefeuille du destinataire
+            Portefeuille::create([
+                'id_utilisateur' => $destinataire->id,
+                'solde' => $compte_om_destinataire->solde,
+                'devise' => 'XOF',
+            ]);
         }
 
         if ($destinataire->id === $utilisateur->id) {
@@ -82,33 +108,68 @@ class TransfertService implements TransfertServiceInterface
             ];
         }
 
-        $idTransfert = 'trf_' . Str::random(10);
-
-        $transfert = Transfert::create([
-            'idTransfert' => $idTransfert,
-            'idUtilisateur' => $utilisateur->id,
-            'telephoneDestinataire' => $data['telephoneDestinataire'],
+        // Create the underlying transaction first (snake_case column names)
+        // Create Transaction instance and initialize it (generates reference before saving)
+        $transaction = new Transaction([
+            'id_utilisateur' => $utilisateur->id,
+            'type' => 'transfert',
             'montant' => $data['montant'],
             'devise' => $data['devise'] ?? 'XOF',
             'frais' => $frais,
+            'numero_telephone_destinataire' => $data['telephoneDestinataire'],
+            'nom_destinataire' => $destinataire->prenom . ' ' . $destinataire->nom,
             'note' => $data['note'] ?? null,
-            'statut' => 'en_attente_confirmation',
-            'dateExpiration' => Carbon::now()->addMinutes(5),
         ]);
+
+        // initier() génère la référence et met le statut avant de sauver
+        if (method_exists($transaction, 'initier')) {
+            $transaction->initier();
+        } else {
+            // fallback: ensure reference exists then save
+            if (empty($transaction->reference) && method_exists($transaction, 'genererReference')) {
+                $transaction->reference = $transaction->genererReference();
+            }
+            $transaction->statut = $transaction->statut ?? 'en_attente';
+            $transaction->save();
+        }
+
+        // Ensure a destinataire record exists in destinataires table
+        $dest = Destinataire::firstOrCreate(
+            ['numero_telephone' => $data['telephoneDestinataire']],
+            ['nom' => $destinataire->prenom . ' ' . $destinataire->nom, 'operateur' => 'orange', 'est_valide' => true]
+        );
+
+        // Create the transfert record referencing the transaction
+        // Depending on the migration used, the transferts table may have either
+        // an `id_destinataire` FK or a `numero_telephone_destinataire` column.
+        // Use the phone column which is present in the later migration.
+        $transfertData = [
+            'id_transaction' => $transaction->id,
+            'id_expediteur' => $utilisateur->id,
+            'nom_destinataire' => $dest->nom,
+            'note' => $data['note'] ?? null,
+            'date_expiration' => Carbon::now()->addMinutes(5),
+        ];
+
+        // prefer phone column
+        $transfertData['numero_telephone_destinataire'] = $data['telephoneDestinataire'];
+
+        // create transfert
+        $transfert = Transfert::create($transfertData);
 
         return [
             'success' => true,
             'data' => [
-                'idTransfert' => $transfert->idTransfert,
-                'statut' => $transfert->statut,
-                'montant' => $transfert->montant,
-                'frais' => $transfert->frais,
-                'montantTotal' => $transfert->montant + $transfert->frais,
+                'idTransfert' => $transfert->id,
+                'statut' => $transaction->statut,
+                'montant' => $transaction->montant,
+                'frais' => $transaction->frais,
+                'montantTotal' => $transaction->montant + $transaction->frais,
                 'destinataire' => [
-                    'numeroTelephone' => $destinataire->numero_telephone,
-                    'nom' => $destinataire->prenom . ' ' . $destinataire->nom,
+                    'numeroTelephone' => $dest->numero_telephone,
+                    'nom' => $dest->nom,
                 ],
-                'dateExpiration' => $transfert->dateExpiration->toISOString(),
+                'dateExpiration' => $transfert->date_expiration ? $transfert->date_expiration->toISOString() : null,
             ],
             'message' => 'Veuillez confirmer le transfert avec votre code PIN'
         ];
@@ -117,12 +178,38 @@ class TransfertService implements TransfertServiceInterface
     // 3.3 Confirmer un Transfert
     public function confirmerTransfert($utilisateur, $idTransfert, $codePin)
     {
-        $transfert = Transfert::where('idTransfert', $idTransfert)
-                              ->where('idUtilisateur', $utilisateur->id)
-                              ->where('statut', 'en_attente_confirmation')
-                              ->first();
+        // Le paramètre idTransfert peut être soit un UUID (id du transfert), soit une référence (reference de la transaction)
+        // On essaie d'abord avec la référence, puis avec l'id du transfert
+        $transaction = Transaction::where('reference', $idTransfert)
+                                  ->where('id_utilisateur', $utilisateur->id)
+                                  ->where('type', 'transfert')
+                                  ->where('statut', 'en_attente')
+                                  ->first();
 
-        if (!$transfert) {
+        // Si pas trouvé par référence, essayer par id_transaction du transfert
+        if (!$transaction) {
+            $transfert = Transfert::where('id', $idTransfert)
+                                  ->where('id_expediteur', $utilisateur->id)
+                                  ->first();
+            
+            if (!$transfert) {
+                return [
+                    'success' => false,
+                    'error' => [
+                        'code' => 'TRANSFER_005',
+                        'message' => 'Transfert introuvable ou déjà confirmé'
+                    ],
+                    'status' => 404
+                ];
+            }
+            
+            $transaction = Transaction::find($transfert->id_transaction);
+        } else {
+            // Récupérer le transfert associé
+            $transfert = Transfert::where('id_transaction', $transaction->id)->first();
+        }
+
+        if (!$transaction || !$transfert) {
             return [
                 'success' => false,
                 'error' => [
@@ -133,7 +220,19 @@ class TransfertService implements TransfertServiceInterface
             ];
         }
 
-        if (Carbon::now()->isAfter($transfert->dateExpiration)) {
+        if ($transaction->statut !== 'en_attente') {
+            return [
+                'success' => false,
+                'error' => [
+                    'code' => 'TRANSFER_005',
+                    'message' => 'Transfert introuvable ou déjà traité'
+                ],
+                'status' => 404
+            ];
+        }
+
+        // Check if transfer has expired
+        if ($transfert->date_expiration && $transfert->date_expiration->isPast()) {
             return [
                 'success' => false,
                 'error' => [
@@ -144,6 +243,7 @@ class TransfertService implements TransfertServiceInterface
             ];
         }
 
+        // Validate PIN
         if (!Hash::check($codePin, $utilisateur->code_pin)) {
             return [
                 'success' => false,
@@ -155,43 +255,29 @@ class TransfertService implements TransfertServiceInterface
             ];
         }
 
-        $result = DB::transaction(function () use ($transfert, $utilisateur) {
+        $result = DB::transaction(function () use ($transfert, $utilisateur, $transaction) {
             $portefeuilleExpediteur = $utilisateur->portefeuille;
-            $destinataire = Utilisateur::where('numero_telephone', $transfert->telephoneDestinataire)->first();
-            $portefeuilleDestinataire = $destinataire->portefeuille;
+            $destinataireUser = Utilisateur::where('numero_telephone', $transaction->numero_telephone_destinataire)->first();
+            $portefeuilleDestinataire = $destinataireUser->portefeuille;
 
             // Débiter l'expéditeur
-            $portefeuilleExpediteur->decrement('solde', $transfert->montant + $transfert->frais);
+            $portefeuilleExpediteur->decrement('solde', $transaction->montant + $transaction->frais);
 
             // Créditer le destinataire
-            $portefeuilleDestinataire->increment('solde', $transfert->montant);
+            $portefeuilleDestinataire->increment('solde', $transaction->montant);
 
-            // Créer la transaction
-            $idTransaction = 'txn_' . Str::random(10);
-            Transaction::create([
-                'idTransaction' => $idTransaction,
-                'idUtilisateur' => $utilisateur->id,
-                'type' => 'transfert',
-                'montant' => $transfert->montant,
-                'devise' => $transfert->devise,
-                'numeroTelephoneDestinataire' => $transfert->telephoneDestinataire,
-                'nomDestinataire' => $destinataire->prenom . ' ' . $destinataire->nom,
-                'statut' => 'termine',
-                'dateTransaction' => Carbon::now(),
-                'reference' => 'OM' . date('YmdHis') . rand(100000, 999999),
-                'frais' => $transfert->frais,
-                'note' => $transfert->note,
-            ]);
+            // Progress transaction statut
+            if (method_exists($transaction, 'valider')) {
+                $transaction->valider();
+            }
+            if (method_exists($transaction, 'executer')) {
+                $transaction->executer();
+            }
 
-            // Mettre à jour le transfert
-            $transfert->update([
-                'statut' => 'termine',
-                'idTransaction' => $idTransaction,
-            ]);
-
+            // return identifiers
             return [
-                'idTransaction' => $idTransaction,
-                'reference' => 'OM' . date('YmdHis') . rand(100000, 999999),
+                'idTransaction' => $transaction->id,
+                'reference' => $transaction->reference ?? ('OM' . date('YmdHis') . rand(100000, 999999)),
             ];
         });
 
@@ -200,10 +286,10 @@ class TransfertService implements TransfertServiceInterface
             'data' => [
                 'idTransaction' => $result['idTransaction'],
                 'statut' => 'termine',
-                'montant' => $transfert->montant,
+                'montant' => $transaction->montant,
                 'destinataire' => [
-                    'numeroTelephone' => $transfert->telephoneDestinataire,
-                    'nom' => $transfert->nomDestinataire ?? 'Destinataire',
+                    'numeroTelephone' => $transaction->numero_telephone_destinataire,
+                    'nom' => $transaction->nom_destinataire ?? 'Destinataire',
                 ],
                 'dateTransaction' => Carbon::now()->toISOString(),
                 'reference' => $result['reference'],
@@ -216,12 +302,37 @@ class TransfertService implements TransfertServiceInterface
     // 3.4 Annuler un Transfert
     public function annulerTransfert($utilisateur, $idTransfert)
     {
-        $transfert = Transfert::where('idTransfert', $idTransfert)
-                              ->where('idUtilisateur', $utilisateur->id)
-                              ->where('statut', 'en_attente_confirmation')
-                              ->first();
+        // Le paramètre idTransfert peut être soit un UUID (id du transfert), soit une référence (reference de la transaction)
+        // On essaie d'abord avec la référence, puis avec l'id du transfert
+        $transaction = Transaction::where('reference', $idTransfert)
+                                  ->where('id_utilisateur', $utilisateur->id)
+                                  ->where('type', 'transfert')
+                                  ->first();
 
-        if (!$transfert) {
+        // Si pas trouvé par référence, essayer par id du transfert
+        if (!$transaction) {
+            $transfert = Transfert::where('id', $idTransfert)
+                                  ->where('id_expediteur', $utilisateur->id)
+                                  ->first();
+            
+            if (!$transfert) {
+                return [
+                    'success' => false,
+                    'error' => [
+                        'code' => 'TRANSFER_006',
+                        'message' => 'Transfert introuvable ou déjà annulé'
+                    ],
+                    'status' => 404
+                ];
+            }
+            
+            $transaction = Transaction::find($transfert->id_transaction);
+        } else {
+            // Récupérer le transfert associé
+            $transfert = Transfert::where('id_transaction', $transaction->id)->first();
+        }
+
+        if (!$transaction || !$transfert) {
             return [
                 'success' => false,
                 'error' => [
@@ -232,7 +343,8 @@ class TransfertService implements TransfertServiceInterface
             ];
         }
 
-        if (Carbon::now()->isAfter($transfert->dateExpiration)) {
+        // Check if transfer has expired
+        if ($transfert->date_expiration && $transfert->date_expiration->isPast()) {
             return [
                 'success' => false,
                 'error' => [
@@ -243,7 +355,17 @@ class TransfertService implements TransfertServiceInterface
             ];
         }
 
-        $transfert->update(['statut' => 'annule']);
+        // Cancel the underlying transaction
+        if (!$transaction->annuler()) {
+            return [
+                'success' => false,
+                'error' => [
+                    'code' => 'TRANSFER_007',
+                    'message' => 'Impossible d\'annuler ce transfert'
+                ],
+                'status' => 422
+            ];
+        }
 
         return [
             'success' => true,

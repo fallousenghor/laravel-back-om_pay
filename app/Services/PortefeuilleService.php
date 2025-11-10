@@ -63,7 +63,7 @@ class PortefeuilleService implements PortefeuilleServiceInterface
                 $transfert = $transaction->transfert;
                 if ($transfert) {
                     $destinataire = [
-                        'numeroTelephone' => $transfert->destinataire->numero_telephone,
+                        'numeroTelephone' => $transfert->numero_telephone_destinataire,
                         'nom' => $transfert->nom_destinataire,
                     ];
                 }

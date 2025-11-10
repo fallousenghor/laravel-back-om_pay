@@ -19,6 +19,7 @@ class OrangeMoney extends Model
         'numero_cni',
         'solde',
         'status',
+        'code',
     ];
 
     public $incrementing = false; // UUID, donc pas d’auto-incrément

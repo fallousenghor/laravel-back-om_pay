@@ -59,8 +59,10 @@ Route::middleware(['auth.token', 'rate.limit'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('paiement')->group(function () {
-        Route::post('verifier-marchand', [PaiementController::class, 'verifierMarchand']); // Vérifier code marchand
+        Route::post('scanner-qr', [PaiementController::class, 'scannerQR']); // Scanner un QR code
+        Route::post('saisir-code', [PaiementController::class, 'saisirCode']); // Saisir un code de paiement
         Route::post('{idPaiement}/confirmer', [PaiementController::class, 'confirmerPaiement']); // Confirmer paiement
+        Route::delete('{idPaiement}/annuler', [PaiementController::class, 'annulerPaiement']); // Annuler paiement
     });
 
 
