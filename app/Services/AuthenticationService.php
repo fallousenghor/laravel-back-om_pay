@@ -6,6 +6,7 @@ use App\Models\OrangeMoney;
 use App\Models\Utilisateur;
 use App\Models\VerificationCode;
 use App\Models\SessionOmpay;
+use App\Models\QRCode;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
@@ -93,8 +94,17 @@ class AuthenticationService
             throw new \Exception("Token invalide");
         }
 
+        // Vérifier si l'utilisateur existe déjà
+        $existingUser = Utilisateur::where('numero_telephone', $numero_telephone)->first();
+        if ($existingUser) {
+            throw new \Exception("Un compte utilisateur existe déjà pour ce numéro de téléphone");
+        }
+
         // Récupérer les informations Orange Money
         $compte_om = OrangeMoney::where('numero_telephone', $numero_telephone)->first();
+        if (!$compte_om) {
+            throw new \Exception("Compte Orange Money non trouvé");
+        }
 
         // Créer l'utilisateur
         $utilisateur = Utilisateur::create([
@@ -107,12 +117,16 @@ class AuthenticationService
             'statut_kyc' => 'verifie'
         ]);
 
+        // Générer un QR code pour l'utilisateur
+        $qrCode = $this->generateUserQRCode($utilisateur);
+
         // Créer une session
         $session = $this->createSession($utilisateur);
 
         return [
             'session_token' => $session->token,
-            'user' => $utilisateur
+            'user' => $utilisateur,
+            'qr_code' => $qrCode
         ];
     }
 
@@ -123,5 +137,30 @@ class AuthenticationService
             'token' => Str::random(64),
             'last_activity' => Carbon::now()
         ]);
+    }
+
+    private function generateUserQRCode($utilisateur)
+    {
+        // Créer un QR code personnel pour l'utilisateur
+        $qrCode = QRCode::create([
+            'id_utilisateur' => $utilisateur->id,
+            'donnees' => json_encode([
+                'type' => 'user_profile',
+                'user_id' => $utilisateur->id,
+                'numero_telephone' => $utilisateur->numero_telephone,
+                'nom' => $utilisateur->nom,
+                'prenom' => $utilisateur->prenom,
+            ]),
+            'montant' => null, // Pas de montant pour un QR code utilisateur
+            'date_generation' => Carbon::now(),
+            'date_expiration' => Carbon::now()->addYears(10), // QR code valide longtemps
+            'utilise' => false,
+        ]);
+
+        return [
+            'id' => $qrCode->id,
+            'data' => $qrCode->generer(),
+            'expires_at' => $qrCode->date_expiration
+        ];
     }
 }
