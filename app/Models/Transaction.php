@@ -14,7 +14,7 @@ class Transaction extends Model
     protected $table = 'transactions';
 
     protected $fillable = [
-        'id_portefeuille',
+        'id_utilisateur',
         'type',
         'montant',
         'devise',
@@ -22,6 +22,11 @@ class Transaction extends Model
         'frais',
         'reference',
         'date_transaction',
+        'numero_telephone_destinataire',
+        'nom_destinataire',
+        'nom_marchand',
+        'categorie_marchand',
+        'note',
     ];
 
     protected $casts = [
@@ -31,9 +36,9 @@ class Transaction extends Model
     ];
 
     // Relationships
-    public function portefeuille(): BelongsTo
+    public function utilisateur(): BelongsTo
     {
-        return $this->belongsTo(Portefeuille::class, 'id_portefeuille');
+        return $this->belongsTo(Utilisateur::class, 'id_utilisateur');
     }
 
     public function transfert()

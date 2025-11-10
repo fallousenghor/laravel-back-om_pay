@@ -17,7 +17,7 @@ class TransfertService implements TransfertServiceInterface
     // 3.1 Vérifier un Destinataire
     public function verifierDestinataire($numeroTelephone)
     {
-        $destinataire = Utilisateur::where('numeroTelephone', $numeroTelephone)->first();
+        $destinataire = Utilisateur::where('numero_telephone', $numeroTelephone)->first();
 
         if (!$destinataire) {
             return [
@@ -35,7 +35,7 @@ class TransfertService implements TransfertServiceInterface
             'data' => [
                 'estValide' => true,
                 'nom' => $destinataire->prenom . ' ' . $destinataire->nom,
-                'numeroTelephone' => $destinataire->numeroTelephone,
+                'numeroTelephone' => $destinataire->numero_telephone,
                 'operateur' => 'Orange', // Simulé
             ]
         ];
@@ -44,7 +44,7 @@ class TransfertService implements TransfertServiceInterface
     // 3.2 Initier un Transfert
     public function initierTransfert($utilisateur, $data)
     {
-        $destinataire = Utilisateur::where('numeroTelephone', $data['telephoneDestinataire'])->first();
+        $destinataire = Utilisateur::where('numero_telephone', $data['telephoneDestinataire'])->first();
 
         if (!$destinataire) {
             return [
@@ -57,7 +57,7 @@ class TransfertService implements TransfertServiceInterface
             ];
         }
 
-        if ($destinataire->idUtilisateur === $utilisateur->idUtilisateur) {
+        if ($destinataire->id === $utilisateur->id) {
             return [
                 'success' => false,
                 'error' => [
@@ -71,7 +71,7 @@ class TransfertService implements TransfertServiceInterface
         $portefeuille = $utilisateur->portefeuille;
         $frais = $this->calculerFrais($data['montant']);
 
-        if ($portefeuille->solde < ($data['montant'] + $frais)) {
+        if (!$portefeuille || $portefeuille->solde < ($data['montant'] + $frais)) {
             return [
                 'success' => false,
                 'error' => [
@@ -86,10 +86,10 @@ class TransfertService implements TransfertServiceInterface
 
         $transfert = Transfert::create([
             'idTransfert' => $idTransfert,
-            'idUtilisateur' => $utilisateur->idUtilisateur,
+            'idUtilisateur' => $utilisateur->id,
             'telephoneDestinataire' => $data['telephoneDestinataire'],
             'montant' => $data['montant'],
-            'devise' => $data['devise'],
+            'devise' => $data['devise'] ?? 'XOF',
             'frais' => $frais,
             'note' => $data['note'] ?? null,
             'statut' => 'en_attente_confirmation',
@@ -105,7 +105,7 @@ class TransfertService implements TransfertServiceInterface
                 'frais' => $transfert->frais,
                 'montantTotal' => $transfert->montant + $transfert->frais,
                 'destinataire' => [
-                    'numeroTelephone' => $destinataire->numeroTelephone,
+                    'numeroTelephone' => $destinataire->numero_telephone,
                     'nom' => $destinataire->prenom . ' ' . $destinataire->nom,
                 ],
                 'dateExpiration' => $transfert->dateExpiration->toISOString(),
@@ -118,7 +118,7 @@ class TransfertService implements TransfertServiceInterface
     public function confirmerTransfert($utilisateur, $idTransfert, $codePin)
     {
         $transfert = Transfert::where('idTransfert', $idTransfert)
-                              ->where('idUtilisateur', $utilisateur->idUtilisateur)
+                              ->where('idUtilisateur', $utilisateur->id)
                               ->where('statut', 'en_attente_confirmation')
                               ->first();
 
@@ -144,7 +144,7 @@ class TransfertService implements TransfertServiceInterface
             ];
         }
 
-        if (!Hash::check($codePin, $utilisateur->codePin)) {
+        if (!Hash::check($codePin, $utilisateur->code_pin)) {
             return [
                 'success' => false,
                 'error' => [
@@ -157,7 +157,7 @@ class TransfertService implements TransfertServiceInterface
 
         $result = DB::transaction(function () use ($transfert, $utilisateur) {
             $portefeuilleExpediteur = $utilisateur->portefeuille;
-            $destinataire = Utilisateur::where('numeroTelephone', $transfert->telephoneDestinataire)->first();
+            $destinataire = Utilisateur::where('numero_telephone', $transfert->telephoneDestinataire)->first();
             $portefeuilleDestinataire = $destinataire->portefeuille;
 
             // Débiter l'expéditeur
@@ -170,7 +170,7 @@ class TransfertService implements TransfertServiceInterface
             $idTransaction = 'txn_' . Str::random(10);
             Transaction::create([
                 'idTransaction' => $idTransaction,
-                'idUtilisateur' => $utilisateur->idUtilisateur,
+                'idUtilisateur' => $utilisateur->id,
                 'type' => 'transfert',
                 'montant' => $transfert->montant,
                 'devise' => $transfert->devise,
@@ -217,7 +217,7 @@ class TransfertService implements TransfertServiceInterface
     public function annulerTransfert($utilisateur, $idTransfert)
     {
         $transfert = Transfert::where('idTransfert', $idTransfert)
-                              ->where('idUtilisateur', $utilisateur->idUtilisateur)
+                              ->where('idUtilisateur', $utilisateur->id)
                               ->where('statut', 'en_attente_confirmation')
                               ->first();
 

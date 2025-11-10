@@ -18,8 +18,7 @@ class PaiementService implements PaiementServiceInterface
     // 4.1 Lister les Catégories de Marchands
     public function listerCategories()
     {
-        // Mongo driver doesn't support selectRaw/groupBy like SQL.
-        // Load categories and aggregate counts in PHP to remain compatible with MongoDB.
+       
         $categories = Marchand::all()->groupBy('categorie')->map(function ($items, $categorie) {
             return [
                 'idCategorie' => 'cat_' . strtolower(str_replace(' ', '_', $categorie)),
@@ -177,7 +176,7 @@ class PaiementService implements PaiementServiceInterface
 
         $paiement = Paiement::create([
             'idPaiement' => $idPaiement,
-            'idUtilisateur' => $utilisateur->idUtilisateur,
+            'idUtilisateur' => $utilisateur->id,
             'idMarchand' => $data['idMarchand'],
             'montant' => $data['montant'],
             'devise' => 'XOF',
@@ -209,7 +208,7 @@ class PaiementService implements PaiementServiceInterface
     public function confirmerPaiement($utilisateur, $idPaiement, $codePin)
     {
         $paiement = Paiement::where('idPaiement', $idPaiement)
-                            ->where('idUtilisateur', $utilisateur->idUtilisateur)
+                            ->where('idUtilisateur', $utilisateur->id)
                             ->where('statut', 'en_attente_confirmation')
                             ->first();
 
@@ -235,7 +234,7 @@ class PaiementService implements PaiementServiceInterface
             ];
         }
 
-        if (!Hash::check($codePin, $utilisateur->codePin)) {
+        if (!Hash::check($codePin, $utilisateur->code_pin)) {
             return [
                 'success' => false,
                 'error' => [
@@ -260,7 +259,7 @@ class PaiementService implements PaiementServiceInterface
             $idTransaction = 'txn_' . Str::random(10);
             Transaction::create([
                 'idTransaction' => $idTransaction,
-                'idUtilisateur' => $utilisateur->idUtilisateur,
+                'idUtilisateur' => $utilisateur->id,
                 'type' => 'paiement',
                 'montant' => $paiement->montant,
                 'devise' => $paiement->devise,
@@ -311,7 +310,7 @@ class PaiementService implements PaiementServiceInterface
     public function annulerPaiement($utilisateur, $idPaiement)
     {
         $paiement = Paiement::where('idPaiement', $idPaiement)
-                            ->where('idUtilisateur', $utilisateur->idUtilisateur)
+                            ->where('idUtilisateur', $utilisateur->id)
                             ->where('statut', 'en_attente_confirmation')
                             ->first();
 

@@ -22,11 +22,13 @@ use App\Http\Controllers\HistoriqueController;
 |--------------------------------------------------------------------------
 */
 
-//  Authentification et création de compte
+// 🔐 Authentification et création de compte
 Route::prefix('auth')->group(function () {
     Route::post('initiate', [AuthController::class, 'initiateRegistration']); // Saisie du numéro et envoi OTP
     Route::post('verify-otp', [AuthController::class, 'verifyOTP']); // Vérification du code OTP
     Route::post('create-account', [AuthController::class, 'createAccount']); // Création du compte OM Pay
+    Route::post('login', [AuthController::class, 'login']); // Connexion avec PIN
+    Route::post('logout', [AuthController::class, 'logout'])->middleware('auth.token'); // Déconnexion
 });
 
 // 🧍‍♂️ Routes protégées (nécessitent un token valide)

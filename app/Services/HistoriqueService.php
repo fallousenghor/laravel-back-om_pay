@@ -10,7 +10,7 @@ class HistoriqueService implements HistoriqueServiceInterface
     // 6.1 Rechercher dans l'Historique
     public function rechercher($utilisateur, $filters)
     {
-        $query = Transaction::where('idUtilisateur', $utilisateur->idUtilisateur);
+        $query = Transaction::where('idUtilisateur', $utilisateur->id);
 
         if (isset($filters['q'])) {
             $q = $filters['q'];

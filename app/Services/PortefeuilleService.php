@@ -27,14 +27,7 @@ class PortefeuilleService implements PortefeuilleServiceInterface
 
         return [
             'success' => true,
-            'data' => [
-                'idPortefeuille' => $portefeuille->id,
-                'solde' => $portefeuille->solde,
-                'soldeDisponible' => $portefeuille->solde,
-                'soldeEnAttente' => 0, // Calculer si nécessaire
-                'devise' => $portefeuille->devise,
-                'derniereMiseAJour' => $portefeuille->derniere_mise_a_jour->toISOString(),
-            ]
+            'data' => $portefeuille->solde
         ];
     }
 

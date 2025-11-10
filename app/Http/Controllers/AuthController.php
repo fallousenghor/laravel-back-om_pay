@@ -116,25 +116,50 @@ class AuthController extends Controller
         return $this->responseFromResult($result);
     }
 
-    // 1.3 Connexion
-    public function connexion(ConnexionRequest $request)
+    /**
+     * Connexion avec numéro de téléphone et code PIN
+     */
+    public function login(Request $request): JsonResponse
     {
-        $result = $this->authService->connexion($request->numeroTelephone, $request->codePin);
-        return $this->responseFromResult($result);
+        try {
+            $request->validate([
+                'numero_telephone' => 'required|string|regex:/^\+221[7][0-9]{8}$/',
+                'code_pin' => 'required|string|size:4|regex:/^\d{4}$/'
+            ]);
+
+            $result = $this->authService->login($request->numero_telephone, $request->code_pin);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Connexion réussie',
+                'data' => $result
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 401);
+        }
     }
 
-    // 1.4 Rafraîchir le Token
-    public function rafraichir(RafraichirTokenRequest $request)
+    /**
+     * Déconnexion
+     */
+    public function logout(Request $request): JsonResponse
     {
-        $result = $this->authService->rafraichir($request->jetonRafraichissement);
-        return $this->responseFromResult($result);
-    }
+        try {
+            $result = $this->authService->logout($request);
 
-    // 1.5 Déconnexion
-    public function deconnexion(Request $request)
-    {
-        $result = $this->authService->deconnexion();
-        return $this->responseFromResult($result);
+            return response()->json([
+                'success' => true,
+                'message' => $result['message']
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
 
     // 1.6 Consulter Profil

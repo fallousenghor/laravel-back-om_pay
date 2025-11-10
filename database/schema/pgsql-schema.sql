@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict iGDZs9UBeLpgaTaAxDLCgz57i2zt9d9TBiiQvKVbiyOsve2pP9NiyUvqLTmTQpd
+\restrict nLXhesmxjjSr9PiPzzvkyufiUCXbalyGetSWuM6J8TE7zpC1b5fYpZhgqY3XW1k
 
 -- Dumped from database version 17.5 (6bc9ef8)
 -- Dumped by pg_dump version 18.0 (Ubuntu 18.0-1.pgdg24.04+3)
@@ -174,6 +174,39 @@ ALTER SEQUENCE public.personal_access_tokens_id_seq OWNED BY public.personal_acc
 
 
 --
+-- Name: portefeuilles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portefeuilles (
+    id uuid NOT NULL,
+    id_utilisateur uuid NOT NULL,
+    solde numeric(15,2) DEFAULT '0'::numeric NOT NULL,
+    devise character varying(3) DEFAULT 'XOF'::character varying NOT NULL,
+    derniere_mise_a_jour timestamp(0) without time zone,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone
+);
+
+
+--
+-- Name: qr_codes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.qr_codes (
+    id uuid NOT NULL,
+    id_marchand uuid,
+    id_utilisateur uuid,
+    donnees json NOT NULL,
+    montant numeric(15,2),
+    date_generation timestamp(0) without time zone NOT NULL,
+    date_expiration timestamp(0) without time zone NOT NULL,
+    utilise boolean DEFAULT false NOT NULL,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone
+);
+
+
+--
 -- Name: sessions_ompay; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -184,6 +217,32 @@ CREATE TABLE public.sessions_ompay (
     last_activity timestamp(0) without time zone NOT NULL,
     created_at timestamp(0) without time zone,
     updated_at timestamp(0) without time zone
+);
+
+
+--
+-- Name: transactions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.transactions (
+    id uuid NOT NULL,
+    id_utilisateur uuid NOT NULL,
+    type character varying(255) NOT NULL,
+    montant numeric(15,2) NOT NULL,
+    devise character varying(3) DEFAULT 'XOF'::character varying NOT NULL,
+    statut character varying(255) DEFAULT 'en_attente'::character varying NOT NULL,
+    frais numeric(10,2) DEFAULT '0'::numeric NOT NULL,
+    reference character varying(50) NOT NULL,
+    date_transaction timestamp(0) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    numero_telephone_destinataire character varying(255),
+    nom_destinataire character varying(255),
+    nom_marchand character varying(255),
+    categorie_marchand character varying(255),
+    note text,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone,
+    CONSTRAINT transactions_statut_check CHECK (((statut)::text = ANY ((ARRAY['en_attente'::character varying, 'en_cours'::character varying, 'termine'::character varying, 'echouee'::character varying, 'annulee'::character varying])::text[]))),
+    CONSTRAINT transactions_type_check CHECK (((type)::text = ANY ((ARRAY['transfert'::character varying, 'paiement'::character varying])::text[])))
 );
 
 
@@ -243,7 +302,7 @@ CREATE TABLE public.utilisateurs (
     derniere_connexion timestamp(0) without time zone,
     created_at timestamp(0) without time zone,
     updated_at timestamp(0) without time zone,
-    CONSTRAINT utilisateurs_statut_kyc_check CHECK (((statut_kyc)::text = ANY ((ARRAY['non_verifie'::character varying, 'en_cours'::character varying, 'verifie'::character varying, 'rejete'::character varying, 'en_attente_verification'::character varying])::text[])))
+    CONSTRAINT utilisateurs_statut_kyc_check CHECK (((statut_kyc)::text = ANY (ARRAY[('non_verifie'::character varying)::text, ('en_cours'::character varying)::text, ('verifie'::character varying)::text, ('rejete'::character varying)::text, ('en_attente_verification'::character varying)::text])))
 );
 
 
@@ -371,6 +430,22 @@ ALTER TABLE ONLY public.personal_access_tokens
 
 
 --
+-- Name: portefeuilles portefeuilles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portefeuilles
+    ADD CONSTRAINT portefeuilles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: qr_codes qr_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.qr_codes
+    ADD CONSTRAINT qr_codes_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: sessions_ompay sessions_ompay_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -384,6 +459,22 @@ ALTER TABLE ONLY public.sessions_ompay
 
 ALTER TABLE ONLY public.sessions_ompay
     ADD CONSTRAINT sessions_ompay_token_unique UNIQUE (token);
+
+
+--
+-- Name: transactions transactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT transactions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transactions transactions_reference_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT transactions_reference_unique UNIQUE (reference);
 
 
 --
@@ -457,6 +548,48 @@ CREATE INDEX personal_access_tokens_tokenable_type_tokenable_id_index ON public.
 
 
 --
+-- Name: portefeuilles_utilisateur_solde_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX portefeuilles_utilisateur_solde_index ON public.portefeuilles USING btree (id_utilisateur, solde);
+
+
+--
+-- Name: qr_codes_date_expiration_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX qr_codes_date_expiration_index ON public.qr_codes USING btree (date_expiration);
+
+
+--
+-- Name: qr_codes_id_utilisateur_utilise_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX qr_codes_id_utilisateur_utilise_index ON public.qr_codes USING btree (id_utilisateur, utilise);
+
+
+--
+-- Name: transactions_reference_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX transactions_reference_index ON public.transactions USING btree (reference);
+
+
+--
+-- Name: transactions_type_statut_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX transactions_type_statut_index ON public.transactions USING btree (type, statut);
+
+
+--
+-- Name: transactions_utilisateur_statut_date_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX transactions_utilisateur_statut_date_index ON public.transactions USING btree (id_utilisateur, statut, date_transaction);
+
+
+--
 -- Name: utilisateurs_email_index; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -471,16 +604,32 @@ CREATE INDEX utilisateurs_numero_statut_index ON public.utilisateurs USING btree
 
 
 --
+-- Name: portefeuilles portefeuilles_id_utilisateur_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portefeuilles
+    ADD CONSTRAINT portefeuilles_id_utilisateur_foreign FOREIGN KEY (id_utilisateur) REFERENCES public.utilisateurs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: transactions transactions_id_utilisateur_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT transactions_id_utilisateur_foreign FOREIGN KEY (id_utilisateur) REFERENCES public.utilisateurs(id) ON DELETE CASCADE;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict iGDZs9UBeLpgaTaAxDLCgz57i2zt9d9TBiiQvKVbiyOsve2pP9NiyUvqLTmTQpd
+\unrestrict nLXhesmxjjSr9PiPzzvkyufiUCXbalyGetSWuM6J8TE7zpC1b5fYpZhgqY3XW1k
 
 --
 -- PostgreSQL database dump
 --
 
-\restrict dYdyd8bAQHcvdY3Acjhg8CRxPugj1GrolesLKUJiLuSAgkWEMGeYOxd1VJGafpH
+\restrict ffVd1RIbYziRBQgMgHtYWCBtJGqzkDUsMF9kYg94o6aUbWPHtKYPBJ4QT0piAaE
 
 -- Dumped from database version 17.5 (6bc9ef8)
 -- Dumped by pg_dump version 18.0 (Ubuntu 18.0-1.pgdg24.04+3)
@@ -525,6 +674,9 @@ COPY public.migrations (id, migration, batch) FROM stdin;
 42	2025_11_10_000005_update_orange_money_table	2
 43	2025_11_10_000006_create_auth_tables	2
 44	2025_11_10_000007_recreate_orange_money_table	2
+45	2025_11_10_131208_create_qr_codes_table	3
+46	2025_11_10_142156_create_portefeuilles_table	4
+47	2025_11_10_142307_create_transactions_table	5
 \.
 
 
@@ -532,12 +684,12 @@ COPY public.migrations (id, migration, batch) FROM stdin;
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.migrations_id_seq', 44, true);
+SELECT pg_catalog.setval('public.migrations_id_seq', 47, true);
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict dYdyd8bAQHcvdY3Acjhg8CRxPugj1GrolesLKUJiLuSAgkWEMGeYOxd1VJGafpH
+\unrestrict ffVd1RIbYziRBQgMgHtYWCBtJGqzkDUsMF9kYg94o6aUbWPHtKYPBJ4QT0piAaE
 

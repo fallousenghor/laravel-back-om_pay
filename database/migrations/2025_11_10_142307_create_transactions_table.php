@@ -9,7 +9,6 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public $withinTransaction = false;
     public function up(): void
     {
         Schema::create('transactions', function (Blueprint $table) {
@@ -34,6 +33,7 @@ return new class extends Migration
             $table->text('note')->nullable();
             $table->timestamps();
 
+            $table->foreign('id_utilisateur')->references('id')->on('utilisateurs')->onDelete('cascade');
             $table->index(['id_utilisateur', 'statut', 'date_transaction'], 'transactions_utilisateur_statut_date_index');
             $table->index(['type', 'statut'], 'transactions_type_statut_index');
             $table->index('reference', 'transactions_reference_index');

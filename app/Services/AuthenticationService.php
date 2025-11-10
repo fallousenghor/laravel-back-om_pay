@@ -163,4 +163,38 @@ class AuthenticationService
             'expires_at' => $qrCode->date_expiration
         ];
     }
+
+    public function login($numero_telephone, $code_pin)
+    {
+        // Vérifier si l'utilisateur existe
+        $utilisateur = Utilisateur::where('numero_telephone', $numero_telephone)->first();
+        if (!$utilisateur) {
+            throw new \Exception("Utilisateur non trouvé");
+        }
+
+        // Vérifier le code PIN
+        if (!Hash::check($code_pin, $utilisateur->code_pin)) {
+            throw new \Exception("Code PIN incorrect");
+        }
+
+        // Créer une session
+        $session = $this->createSession($utilisateur);
+
+        return [
+            'session_token' => $session->token,
+            'user' => $utilisateur
+        ];
+    }
+
+    public function logout($request)
+    {
+        $session = $request->attributes->get('session');
+        if ($session) {
+            $session->delete();
+        }
+
+        return [
+            'message' => 'Déconnexion réussie'
+        ];
+    }
 }

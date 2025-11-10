@@ -4,7 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use App\Models\Authentification;
+use App\Models\SessionOmpay;
 use App\Models\Utilisateur;
 use Carbon\Carbon;
 
@@ -22,29 +22,21 @@ class AuthenticateWithToken
         }
 
         $token = substr($header, 7);
-        $auth = Authentification::where('jeton_acces', $token)->first();
+        $session = SessionOmpay::where('token', $token)->first();
 
-        if (! $auth) {
+        if (! $session) {
             return response()->json(['message' => 'Invalid token.'], 401);
         }
 
-        // Check expiration: ensure we pass a proper DateTime/Carbon to the comparison
-        if (isset($auth->date_expiration) && $auth->date_expiration) {
-            try {
-                $expiry = $auth->date_expiration instanceof \DateTimeInterface
-                    ? \Carbon\Carbon::instance($auth->date_expiration)
-                    : \Carbon\Carbon::parse($auth->date_expiration);
-
-                if (\Carbon\Carbon::now()->gt($expiry)) {
-                    return response()->json(['message' => 'Token expired.'], 401);
-                }
-            } catch (\Throwable $e) {
-                // If parsing fails, reject the token
-                return response()->json(['message' => 'Invalid token expiration.'], 401);
-            }
+        // Check if session is still active (last activity within 24 hours)
+        if (Carbon::now()->diffInHours($session->last_activity) > 24) {
+            return response()->json(['message' => 'Session expired.'], 401);
         }
 
-        $user = Utilisateur::find($auth->id_utilisateur);
+        // Update last activity
+        $session->update(['last_activity' => Carbon::now()]);
+
+        $user = Utilisateur::find($session->utilisateur_id);
 
         if (! $user) {
             return response()->json(['message' => 'User not found.'], 401);
@@ -56,8 +48,8 @@ class AuthenticateWithToken
             return $user;
         });
 
-        // Also make the authentification record available on the request if controllers need it
-        $request->attributes->set('authentification', $auth);
+        // Also make the session record available on the request if controllers need it
+        $request->attributes->set('session', $session);
 
         return $next($request);
     }
