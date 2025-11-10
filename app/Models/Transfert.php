@@ -18,7 +18,7 @@ class Transfert extends Transaction
     protected $fillable = [
         'id_transaction',
         'id_expediteur',
-        'id_destinataire',
+        'numero_telephone_destinataire',
         'nom_destinataire',
         'note',
         'date_expiration',
@@ -39,9 +39,9 @@ class Transfert extends Transaction
         return $this->belongsTo(Utilisateur::class, 'id_expediteur');
     }
 
-    public function destinataire(): BelongsTo
+    public function destinataireOrangeMoney()
     {
-        return $this->belongsTo(Destinataire::class, 'id_destinataire');
+        return $this->belongsTo(OrangeMoney::class, 'numero_telephone_destinataire', 'numero_telephone');
     }
 
     // Scopes
@@ -58,7 +58,7 @@ class Transfert extends Transaction
     // Methods
     public function verifierDestinataire(): bool
     {
-        return $this->destinataire && $this->destinataire->est_valide;
+        return $this->destinataireOrangeMoney && $this->destinataireOrangeMoney->est_actif;
     }
 
     public function calculerFrais(): float

@@ -34,7 +34,7 @@ class PortefeuilleService implements PortefeuilleServiceInterface
     // 2.2 Historique des Transactions
     public function historiqueTransactions($utilisateur, $filters, $page, $limite)
     {
-        $query = Transaction::where('id_portefeuille', $utilisateur->portefeuille->id);
+        $query = Transaction::where('id_utilisateur', $utilisateur->id);
 
         if (isset($filters['type']) && $filters['type'] !== 'tous') {
             $query->where('type', $filters['type']);
@@ -109,7 +109,7 @@ class PortefeuilleService implements PortefeuilleServiceInterface
     public function detailsTransaction($utilisateur, $idTransaction)
     {
         $transaction = Transaction::where('id', $idTransaction)
-                                  ->where('id_portefeuille', $utilisateur->portefeuille->id)
+                                  ->where('id_utilisateur', $utilisateur->id)
                                   ->first();
 
         if (!$transaction) {

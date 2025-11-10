@@ -13,6 +13,20 @@ class Transaction extends Model
 
     protected $table = 'transactions';
 
+    public $incrementing = false; // UUID, donc pas d'auto-incrément
+    protected $keyType = 'string'; // la clé primaire est une chaîne (UUID)
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->{$model->getKeyName()})) {
+                $model->{$model->getKeyName()} = (string) Str::uuid();
+            }
+        });
+    }
+
     protected $fillable = [
         'id_utilisateur',
         'type',
