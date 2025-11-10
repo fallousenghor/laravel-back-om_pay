@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8090:80"
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+      - /var/www/html/node_modules
+    environment:
+      - APP_ENV=local
+      - APP_KEY=${APP_KEY}
+      - DB_CONNECTION=pgsql
+      - DB_HOST=ep-wispy-union-adcens7o-pooler.c-2.us-east-1.aws.neon.tech
+      - DB_PORT=5432
+      - DB_DATABASE=neondb
+      - DB_USERNAME=neondb_owner
+      - DB_PASSWORD=npg_avDqQ3wOuKN8
+      - DB_SSLMODE=require
+      - DB_CHANNEL_BINDING=require
+    networks:
+      - ompay-network
+
+volumes:
+
+networks:
+  ompay-network:
+    driver: bridge

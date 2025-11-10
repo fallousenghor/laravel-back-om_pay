@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: ompay-laravel
+    runtime: docker
+    buildCommand: docker build -t ompay-app .
+    startCommand: docker run -p $PORT:80 --env-file .env ompay-app
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_KEY
+        generateValue: true
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        value: ep-wispy-union-adcens7o-pooler.c-2.us-east-1.aws.neon.tech
+      - key: DB_PORT
+        value: 5432
+      - key: DB_DATABASE
+        value: neondb
+      - key: DB_USERNAME
+        value: neondb_owner
+      - key: DB_PASSWORD
+        value: npg_avDqQ3wOuKN8
+      - key: DB_SSLMODE
+        value: require
+      - key: DB_CHANNEL_BINDING
+        value: require
+      - key: CACHE_DRIVER
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: SESSION_DRIVER
+        value: file
+    healthCheckPath: /
+    disk:
+      name: ompay-disk
+      mountPath: /var/www/html/storage
+      sizeGB: 1
