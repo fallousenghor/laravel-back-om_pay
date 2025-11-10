@@ -6,8 +6,6 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PortefeuilleController;
 use App\Http\Controllers\TransfertController;
 use App\Http\Controllers\PaiementController;
-use App\Http\Controllers\ContactController;
-use App\Http\Controllers\HistoriqueController;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,7 +24,6 @@ use App\Http\Controllers\HistoriqueController;
 Route::prefix('auth')->group(function () {
     Route::post('initiate', [AuthController::class, 'initiateRegistration']); // Saisie du numéro et envoi OTP
     Route::post('verify-otp', [AuthController::class, 'verifyOTP']); // Vérification du code OTP
-    Route::post('create-account', [AuthController::class, 'createAccount']); // Création du compte OM Pay
     Route::post('login', [AuthController::class, 'login']); // Connexion avec PIN
     Route::post('logout', [AuthController::class, 'logout'])->middleware('auth.token'); // Déconnexion
 });
@@ -51,7 +48,6 @@ Route::middleware(['auth.token', 'rate.limit'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('transfert')->group(function () {
-        Route::post('verifier-destinataire', [TransfertController::class, 'verifierDestinataire']); // Vérification destinataire avant transfert
         Route::post('initier', [TransfertController::class, 'initierTransfert']); // Initier un transfert
         Route::post('{idTransfert}/confirmer', [TransfertController::class, 'confirmerTransfert']); // Confirmer un transfert
         Route::delete('{idTransfert}/annuler', [TransfertController::class, 'annulerTransfert']); // Annuler un transfert
@@ -64,29 +60,10 @@ Route::middleware(['auth.token', 'rate.limit'])->group(function () {
     */
     Route::prefix('paiement')->group(function () {
         Route::post('verifier-marchand', [PaiementController::class, 'verifierMarchand']); // Vérifier code marchand
-        Route::post('initier', [PaiementController::class, 'initierPaiement']); // Initier paiement marchand
         Route::post('{idPaiement}/confirmer', [PaiementController::class, 'confirmerPaiement']); // Confirmer paiement
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Historique
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('historique')->group(function () {
-        Route::get('rechercher', [HistoriqueController::class, 'rechercher']); // Recherche dans l’historique
-    });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Contacts (optionnel : pour envoyer de l’argent facilement)
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('contacts')->group(function () {
-        Route::get('/', [ContactController::class, 'liste']); // Liste des contacts enregistrés
-        Route::post('ajouter', [ContactController::class, 'ajouter']); // Ajouter un contact
-        Route::delete('{id}', [ContactController::class, 'supprimer']); // Supprimer un contact
-    });
 });
 
 // ✅ Vérifier utilisateur connecté

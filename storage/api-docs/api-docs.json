@@ -1,0 +1,1236 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "OM Pay API",
+        "description": "API pour l'application OM Pay - Gestion des paiements et transferts",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000/api",
+            "description": "Serveur de développement"
+        }
+    ],
+    "paths": {
+        "/auth/initiate": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Initier l'inscription",
+                "description": "Envoie un code OTP pour commencer le processus d'inscription",
+                "operationId": "7cb5aa61d3d94bc8380474c5ab732581",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "numero_telephone"
+                                ],
+                                "properties": {
+                                    "numero_telephone": {
+                                        "description": "Numéro de téléphone au format +2217XXXXXXXX",
+                                        "type": "string",
+                                        "example": "+221701234567"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Code OTP envoyé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Code de vérification envoyé avec succès"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "token": {
+                                                    "type": "string",
+                                                    "example": "abc123"
+                                                },
+                                                "code_otp": {
+                                                    "type": "string",
+                                                    "example": "123456"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Numéro de téléphone invalide"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/verify-otp": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Vérifier le code OTP",
+                "description": "Vérifie le code OTP envoyé par SMS",
+                "operationId": "e27990449a29ee7e65be429d7e1b8f0f",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "token",
+                                    "code"
+                                ],
+                                "properties": {
+                                    "token": {
+                                        "description": "Token reçu lors de l'initiation",
+                                        "type": "string",
+                                        "example": "abc123"
+                                    },
+                                    "code": {
+                                        "description": "Code OTP à 6 chiffres",
+                                        "type": "string",
+                                        "example": "123456"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Code OTP vérifié avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Code OTP invalide ou expiré",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Code OTP invalide"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Connexion",
+                "description": "Se connecter avec numéro de téléphone et code PIN",
+                "operationId": "8cb7742ae98d0990acb2907c4e00bf24",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "numero_telephone",
+                                    "code_pin"
+                                ],
+                                "properties": {
+                                    "numero_telephone": {
+                                        "type": "string",
+                                        "example": "+221701234567"
+                                    },
+                                    "code_pin": {
+                                        "type": "string",
+                                        "example": "1234"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Connexion réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Connexion réussie"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Identifiants incorrects",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Numéro ou PIN incorrect"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Déconnexion",
+                "description": "Se déconnecter de l'application",
+                "operationId": "0d29c740dc06d77602af8095bf4654cc",
+                "responses": {
+                    "200": {
+                        "description": "Déconnexion réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Déconnexion réussie"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Erreur lors de la déconnexion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/paiement/scanner-qr": {
+            "post": {
+                "tags": [
+                    "Paiements"
+                ],
+                "summary": "Scanner un QR code",
+                "description": "Scanne et décode un QR code de paiement marchand",
+                "operationId": "cd3e44f3c5e8e95360ef044deb673882",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "donneesQR"
+                                ],
+                                "properties": {
+                                    "donneesQR": {
+                                        "description": "Données encodées dans le QR code",
+                                        "type": "string",
+                                        "example": "QR_CODE_DATA_HERE"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "QR code scanné avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "marchand": {
+                                                    "type": "object"
+                                                },
+                                                "montant": {
+                                                    "type": "number",
+                                                    "format": "float"
+                                                },
+                                                "reference": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "QR code invalide",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "QR code invalide"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/paiement/saisir-code": {
+            "post": {
+                "tags": [
+                    "Paiements"
+                ],
+                "summary": "Saisir un code de paiement",
+                "description": "Saisit manuellement un code de paiement marchand",
+                "operationId": "a5856aeb315c6d8f8ae0d7ca5c756485",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "code"
+                                ],
+                                "properties": {
+                                    "code": {
+                                        "description": "Code de paiement fourni par le marchand",
+                                        "type": "string",
+                                        "example": "PAY123456"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Code de paiement validé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "marchand": {
+                                                    "type": "object"
+                                                },
+                                                "montant": {
+                                                    "type": "number",
+                                                    "format": "float"
+                                                },
+                                                "reference": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Code de paiement invalide",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Code de paiement invalide"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/paiement/{idPaiement}/confirmer": {
+            "post": {
+                "tags": [
+                    "Paiements"
+                ],
+                "summary": "Confirmer un paiement",
+                "description": "Confirme et exécute un paiement en attente",
+                "operationId": "d82940d94e2dc90ef3500620083749c5",
+                "parameters": [
+                    {
+                        "name": "idPaiement",
+                        "in": "path",
+                        "description": "ID du paiement à confirmer",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "codePin"
+                                ],
+                                "properties": {
+                                    "codePin": {
+                                        "description": "Code PIN de l'utilisateur",
+                                        "type": "string",
+                                        "example": "1234"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Paiement confirmé et exécuté",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "idPaiement": {
+                                                    "type": "string"
+                                                },
+                                                "statut": {
+                                                    "type": "string",
+                                                    "example": "REUSSI"
+                                                },
+                                                "dateExecution": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "PIN incorrect ou paiement déjà traité",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/paiement/{idPaiement}/annuler": {
+            "delete": {
+                "tags": [
+                    "Paiements"
+                ],
+                "summary": "Annuler un paiement",
+                "description": "Annule un paiement en attente",
+                "operationId": "d4ec8bd24ced83e334a466bb061d94e8",
+                "parameters": [
+                    {
+                        "name": "idPaiement",
+                        "in": "path",
+                        "description": "ID du paiement à annuler",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paiement annulé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "idPaiement": {
+                                                    "type": "string"
+                                                },
+                                                "statut": {
+                                                    "type": "string",
+                                                    "example": "ANNULE"
+                                                },
+                                                "dateAnnulation": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Paiement ne peut pas être annulé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Paiement déjà traité"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/portefeuille/solde": {
+            "get": {
+                "tags": [
+                    "Portefeuille"
+                ],
+                "summary": "Consulter le solde",
+                "description": "Récupère le solde actuel du portefeuille OM Pay",
+                "operationId": "5ab522d7ccce5a260f52771e0b920321",
+                "responses": {
+                    "200": {
+                        "description": "Solde récupéré avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "solde": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 15000.5
+                                                },
+                                                "devise": {
+                                                    "type": "string",
+                                                    "example": "XOF"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Token invalide"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/portefeuille/transactions": {
+            "get": {
+                "tags": [
+                    "Portefeuille"
+                ],
+                "summary": "Historique des transactions",
+                "description": "Récupère l'historique des transactions avec filtres optionnels",
+                "operationId": "476c0be4dfd477107df2b74546afbf30",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Numéro de page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "limite",
+                        "in": "query",
+                        "description": "Nombre d'éléments par page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "description": "Type de transaction (transfert, paiement, etc.)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "dateDebut",
+                        "in": "query",
+                        "description": "Date de début (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "dateFin",
+                        "in": "query",
+                        "description": "Date de fin (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "statut",
+                        "in": "query",
+                        "description": "Statut de la transaction",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Historique récupéré avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "transactions": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "pagination": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/portefeuille/transactions/{idTransaction}": {
+            "get": {
+                "tags": [
+                    "Portefeuille"
+                ],
+                "summary": "Détails d'une transaction",
+                "description": "Récupère les détails d'une transaction spécifique",
+                "operationId": "e204d6636bb505001741b4ecbbe60f37",
+                "parameters": [
+                    {
+                        "name": "idTransaction",
+                        "in": "path",
+                        "description": "ID de la transaction",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Détails de la transaction récupérés",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "montant": {
+                                                    "type": "number",
+                                                    "format": "float"
+                                                },
+                                                "type": {
+                                                    "type": "string"
+                                                },
+                                                "statut": {
+                                                    "type": "string"
+                                                },
+                                                "date": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Transaction non trouvée",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Transaction non trouvée"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/transfert/initier": {
+            "post": {
+                "tags": [
+                    "Transferts"
+                ],
+                "summary": "Initier un transfert",
+                "description": "Crée une demande de transfert d'argent",
+                "operationId": "32e62e9880fd56519d8e39003d8fbd57",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "numeroTelephoneDestinataire",
+                                    "montant"
+                                ],
+                                "properties": {
+                                    "numeroTelephoneDestinataire": {
+                                        "type": "string",
+                                        "example": "+221701234567"
+                                    },
+                                    "montant": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 5000
+                                    },
+                                    "description": {
+                                        "description": "Description optionnelle",
+                                        "type": "string",
+                                        "example": "Paiement loyer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Transfert initié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "idTransfert": {
+                                                    "type": "string"
+                                                },
+                                                "montant": {
+                                                    "type": "number",
+                                                    "format": "float"
+                                                },
+                                                "frais": {
+                                                    "type": "number",
+                                                    "format": "float"
+                                                },
+                                                "statut": {
+                                                    "type": "string",
+                                                    "example": "EN_ATTENTE"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Erreur de validation ou solde insuffisant",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/transfert/{idTransfert}/confirmer": {
+            "post": {
+                "tags": [
+                    "Transferts"
+                ],
+                "summary": "Confirmer un transfert",
+                "description": "Confirme et exécute un transfert en attente",
+                "operationId": "b7967cdd0d4a8fc2bcfbecd19d56b776",
+                "parameters": [
+                    {
+                        "name": "idTransfert",
+                        "in": "path",
+                        "description": "ID du transfert à confirmer",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "codePin"
+                                ],
+                                "properties": {
+                                    "codePin": {
+                                        "description": "Code PIN de l'utilisateur",
+                                        "type": "string",
+                                        "example": "1234"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Transfert confirmé et exécuté",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "idTransfert": {
+                                                    "type": "string"
+                                                },
+                                                "statut": {
+                                                    "type": "string",
+                                                    "example": "REUSSI"
+                                                },
+                                                "dateExecution": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "PIN incorrect ou transfert déjà traité",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/transfert/{idTransfert}/annuler": {
+            "delete": {
+                "tags": [
+                    "Transferts"
+                ],
+                "summary": "Annuler un transfert",
+                "description": "Annule un transfert en attente",
+                "operationId": "3b815a15be06b21f56778b72897d448e",
+                "parameters": [
+                    {
+                        "name": "idTransfert",
+                        "in": "path",
+                        "description": "ID du transfert à annuler",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transfert annulé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "idTransfert": {
+                                                    "type": "string"
+                                                },
+                                                "statut": {
+                                                    "type": "string",
+                                                    "example": "ANNULE"
+                                                },
+                                                "dateAnnulation": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Transfert ne peut pas être annulé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Transfert déjà traité"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Authentification",
+            "description": "Authentification"
+        },
+        {
+            "name": "Paiements",
+            "description": "Paiements"
+        },
+        {
+            "name": "Portefeuille",
+            "description": "Portefeuille"
+        },
+        {
+            "name": "Transferts",
+            "description": "Transferts"
+        }
+    ]
+}
