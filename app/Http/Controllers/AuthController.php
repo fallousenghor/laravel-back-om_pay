@@ -145,9 +145,27 @@ class AuthController extends Controller
                 $request->code
             );
 
+            // Normaliser la réponse pour ne renvoyer que le token et le numéro de téléphone
+            $token = $result['session_token'] ?? $result['token'] ?? null;
+
+            $phone = null;
+            if (isset($result['numero_telephone'])) {
+                $phone = $result['numero_telephone'];
+            } elseif (isset($result['user'])) {
+                $user = $result['user'];
+                if (is_object($user)) {
+                    $phone = $user->numero_telephone ?? null;
+                } elseif (is_array($user)) {
+                    $phone = $user['numero_telephone'] ?? null;
+                }
+            }
+
             return response()->json([
                 'success' => true,
-                'data' => $result
+                'data' => [
+                    'token' => $token,
+                    'numero_telephone' => $phone,
+                ]
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -185,15 +203,17 @@ class AuthController extends Controller
      *             @OA\Property(property="code_pin", type="string", example="1234")
      *         )
      *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Connexion réussie",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Connexion réussie"),
-     *             @OA\Property(property="data", type="object")
-     *         )
-     *     ),
+    *     @OA\Response(
+    *         response=200,
+    *         description="Connexion réussie",
+    *         @OA\JsonContent(
+    *             @OA\Property(property="success", type="boolean", example=true),
+    *             @OA\Property(property="message", type="string", example="Connexion réussie"),
+    *             @OA\Property(property="data", type="object",
+    *                 @OA\Property(property="session_token", type="string", example="PMOfGqub4qI1LRynqATixgXiug0PnrCjgEF7VTJqOcazKv0XrFTEnLANQJkhnBbK")
+    *             )
+    *         )
+    *     ),
      *     @OA\Response(
      *         response=401,
      *         description="Identifiants incorrects",
@@ -214,10 +234,13 @@ class AuthController extends Controller
 
             $result = $this->authService->login($request->numero_telephone, $request->code_pin);
 
+            // Retourner uniquement le token de session (pas l'objet utilisateur)
             return response()->json([
                 'success' => true,
                 'message' => 'Connexion réussie',
-                'data' => $result
+                'data' => [
+                    'session_token' => $result['session_token'] ?? null
+                ]
             ]);
         } catch (Exception $e) {
             return response()->json([

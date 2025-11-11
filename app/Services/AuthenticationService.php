@@ -11,6 +11,7 @@ use App\Models\Portefeuille;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
+use App\Jobs\SendOtpSmsJob;
 
 class AuthenticationService
 {
@@ -36,7 +37,16 @@ class AuthenticationService
 
         // Dans un environnement réel, envoyer le SMS ici
         $lien = env('APP_URL') . "/verify/" . $token;
-        
+
+        // Dispatcher une job pour envoyer le SMS de manière asynchrone
+        try {
+            SendOtpSmsJob::dispatch($numero_telephone, $code);
+        } catch (\Exception $e) {
+            \Log::error('AuthenticationService initiateLogin dispatch job error: ' . $e->getMessage(), ['phone' => $numero_telephone]);
+            // On ne lance pas d'exception ici pour ne pas bloquer la création du code de vérification;
+            // la job pourra être traitée/retryée par le système de queue.
+        }
+
         return [
             'message' => 'Un SMS a été envoyé avec le code de vérification',
             'code' => $code, // En production, ne pas renvoyer le code
@@ -70,21 +80,54 @@ class AuthenticationService
                 throw new \Exception("Compte Orange Money introuvable pour ce numéro de téléphone");
             }
 
+            // Si un utilisateur existe déjà avec le même numéro CNI, l'utiliser au lieu de tenter
+            // une insertion qui provoquerait une violation de contrainte unique.
+            $existingByCni = null;
+            if (!empty($compte_om->numero_cni)) {
+                $existingByCni = Utilisateur::where('numero_cni', $compte_om->numero_cni)->first();
+            }
+
+            if ($existingByCni) {
+                // Mettre à jour le numéro de téléphone si nécessaire
+                if (empty($existingByCni->numero_telephone) || $existingByCni->numero_telephone !== $verification->numero_telephone) {
+                    $existingByCni->update(['numero_telephone' => $verification->numero_telephone]);
+                }
+
+                // Assurer l'existence du portefeuille
+                $portefeuille = Portefeuille::firstOrCreate([
+                    'id_utilisateur' => $existingByCni->id
+                ], [
+                    'solde' => $compte_om->solde ?? 0,
+                    'devise' => 'XOF'
+                ]);
+
+                $qrCode = $this->generateUserQRCode($existingByCni);
+
+                return [
+                    'status' => 'user_linked',
+                    'numero_telephone' => $verification->numero_telephone,
+                    'token' => $token,
+                    'user' => $existingByCni,
+                    'portefeuille' => $portefeuille,
+                    'qr_code' => $qrCode
+                ];
+            }
+
             // Premier accès, créer automatiquement l'utilisateur
             $utilisateur = Utilisateur::create([
                 'numero_telephone' => $verification->numero_telephone,
-                'prenom' => $compte_om->prenom,
-                'nom' => $compte_om->nom,
+                'prenom' => $compte_om->prenom ?? null,
+                'nom' => $compte_om->nom ?? null,
                 'email' => null, // Peut être ajouté plus tard
                 'code_pin' => null, // Sera défini lors de la première connexion
-                'numero_cni' => $compte_om->numero_cni,
+                'numero_cni' => $compte_om->numero_cni ?? null,
                 'statut_kyc' => 'verifie'
             ]);
 
             // Créer le portefeuille automatiquement avec le solde du compte Orange Money
             $portefeuille = Portefeuille::create([
                 'id_utilisateur' => $utilisateur->id,
-                'solde' => $compte_om->solde,
+                'solde' => $compte_om->solde ?? 0,
                 'devise' => 'XOF',
             ]);
 
@@ -170,15 +213,19 @@ class AuthenticationService
 
     private function generateUserQRCode($utilisateur)
     {
+        if (!$utilisateur) {
+            throw new \Exception('Impossible de générer un QR code: utilisateur introuvable');
+        }
+
         // Créer un QR code personnel pour l'utilisateur
         $qrCode = QRCode::create([
             'id_utilisateur' => $utilisateur->id,
             'donnees' => json_encode([
                 'type' => 'user_profile',
                 'user_id' => $utilisateur->id,
-                'numero_telephone' => $utilisateur->numero_telephone,
-                'nom' => $utilisateur->nom,
-                'prenom' => $utilisateur->prenom,
+                'numero_telephone' => $utilisateur->numero_telephone ?? null,
+                'nom' => $utilisateur->nom ?? null,
+                'prenom' => $utilisateur->prenom ?? null,
             ]),
             'montant' => null, // Pas de montant pour un QR code utilisateur
             'date_generation' => Carbon::now(),

@@ -226,6 +226,12 @@
                                             "example": "Connexion réussie"
                                         },
                                         "data": {
+                                            "properties": {
+                                                "session_token": {
+                                                    "type": "string",
+                                                    "example": "PMOfGqub4qI1LRynqATixgXiug0PnrCjgEF7VTJqOcazKv0XrFTEnLANQJkhnBbK"
+                                                }
+                                            },
                                             "type": "object"
                                         }
                                     },

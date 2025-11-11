@@ -47,4 +47,30 @@ class OtpService
 
         return $otp;
     }
+
+    /**
+     * Regenerate OTP, store it on the user and send it by SMS using Twilio
+     *
+     * @param mixed $utilisateur
+     * @return bool true if SMS sent successfully, false otherwise
+     */
+    public function sendOtpBySms($utilisateur): bool
+    {
+        // Regenerate and persist OTP
+        $otp = $this->regenerateOtp($utilisateur);
+
+        // Determine phone number field used in the project
+        $phone = $utilisateur->numero_telephone ?? $utilisateur->phone ?? null;
+
+        if (!$phone) {
+            \Log::warning('OtpService: utilisateur has no phone number', ['user_id' => $utilisateur->id ?? null]);
+            return false;
+        }
+
+        $message = "Votre code OTP pour Om-Pay est : {$otp}. Il expire dans 5 minutes.";
+
+        $smsService = new TwilioSmsService();
+
+        return $smsService->sendSms($phone, $message);
+    }
 }
