@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
+use App\Interfaces\TwilioSmsServiceInterface;
 use Twilio\Rest\Client;
 use Exception;
 
-class TwilioSmsService
+class TwilioSmsService implements TwilioSmsServiceInterface
 {
     protected Client $client;
     protected string $from;

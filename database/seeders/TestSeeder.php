@@ -28,7 +28,7 @@ class TestSeeder extends Seeder
             'updated_at' => now(),
         ]);
 
-        echo "Test insertion réussie\n";
+        echo __('messages.fr.seeders.test_insertion_success') . "\n";
     }
 }
 

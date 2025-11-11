@@ -75,6 +75,16 @@ class Marchand extends Model
         return $query->where('accepte_code', true);
     }
 
+    public function scopeById($query, $id)
+    {
+        return $query->where('id', $id);
+    }
+
+    public function scopeByCategory($query, $category)
+    {
+        return $query->where('categorie', $category);
+    }
+
     // Methods
     public function obtenirInformations(): array
     {

@@ -35,4 +35,20 @@ class OrangeMoney extends Model
             }
         });
     }
+
+    // Scopes
+    public function scopeByPhoneNumber($query, $phoneNumber)
+    {
+        return $query->where('numero_telephone', $phoneNumber);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    public function scopeByCode($query, $code)
+    {
+        return $query->where('code', $code);
+    }
 }

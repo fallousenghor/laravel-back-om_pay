@@ -36,7 +36,7 @@ class SendOtpSmsJob implements ShouldQueue
      */
     public function handle()
     {
-        $message = "Votre code de vérification Om-Pay est : {$this->code}. Il expire dans 15 minutes.";
+        $message = __('messages.fr.sms.otp_verification', ['code' => $this->code]);
 
         try {
             $sms = new TwilioSmsService();

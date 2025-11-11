@@ -12,12 +12,12 @@ try {
     $svc = $app->make(\App\Services\TwilioSmsService::class);
 
     $to = '+221782463262'; // number provided by user
-    $message = 'Test SMS Om-Pay at ' . date('Y-m-d H:i:s');
+    $message = __('messages.fr.sms.test_sms', ['date' => date('Y-m-d H:i:s')]);
 
     $ok = $svc->sendSms($to, $message);
 
     if ($ok) {
-        echo "SMS envoyé avec succès à {$to}\n";
+        echo __('messages.fr.sms.sms_sent_success', ['phone' => $to]) . "\n";
     } else {
         echo "Échec de l'envoi du SMS à {$to} (voir logs).\n";
     }

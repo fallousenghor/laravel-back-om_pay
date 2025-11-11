@@ -6,6 +6,7 @@ use App\Interfaces\TransfertServiceInterface;
 use App\Http\Requests\InitierTransfertRequest;
 use App\Http\Requests\ConfirmerTransfertRequest;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class TransfertController extends Controller
 {
@@ -56,7 +57,7 @@ class TransfertController extends Controller
      *     )
      * )
      */
-    public function initierTransfert(InitierTransfertRequest $request)
+    public function initierTransfert(InitierTransfertRequest $request): JsonResponse
     {
         $utilisateur = $request->user();
         $data = $request->validated();
@@ -110,7 +111,7 @@ class TransfertController extends Controller
      *     )
      * )
      */
-    public function confirmerTransfert(ConfirmerTransfertRequest $request, $idTransfert)
+    public function confirmerTransfert(ConfirmerTransfertRequest $request, $idTransfert): JsonResponse
     {
         $utilisateur = $request->user();
         $result = $this->transfertService->confirmerTransfert($utilisateur, $idTransfert, $request->codePin);
@@ -153,7 +154,7 @@ class TransfertController extends Controller
      *     )
      * )
      */
-    public function annulerTransfert(Request $request, $idTransfert)
+    public function annulerTransfert(Request $request, $idTransfert): JsonResponse
     {
         $utilisateur = $request->user();
         $result = $this->transfertService->annulerTransfert($utilisateur, $idTransfert);

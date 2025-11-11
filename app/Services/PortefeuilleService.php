@@ -2,60 +2,62 @@
 
 namespace App\Services;
 
-use App\Models\Portefeuille;
-use App\Models\Transaction;
+use App\DTOs\Portefeuille\SoldeDTO;
+use App\DTOs\Portefeuille\HistoriqueTransactionsDTO;
+use App\DTOs\Portefeuille\DetailsTransactionDTO;
 use App\Interfaces\PortefeuilleServiceInterface;
-use Carbon\Carbon;
+use App\Interfaces\TransactionRepositoryInterface;
+use App\Traits\PortefeuilleResponseTrait;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class PortefeuilleService implements PortefeuilleServiceInterface
 {
+    use PortefeuilleResponseTrait;
+
+    private TransactionRepositoryInterface $transactionRepository;
+
+    public function __construct(TransactionRepositoryInterface $transactionRepository)
+    {
+        $this->transactionRepository = $transactionRepository;
+    }
+
     // 2.1 Consulter le Solde
     public function consulterSolde($utilisateur)
     {
+        // Business logic: Vérifier l'existence du portefeuille
         $portefeuille = $utilisateur->portefeuille;
 
         if (!$portefeuille) {
-            return [
-                'success' => false,
-                'error' => [
-                    'code' => 'WALLET_001',
-                    'message' => 'Portefeuille introuvable'
-                ],
-                'status' => 404
-            ];
+            return $this->portefeuilleErrorResponse('Portefeuille introuvable', 404);
         }
 
-        return [
-            'success' => true,
-            'data' => $portefeuille->solde
-        ];
+        // Business logic: Retourner le solde
+        $dto = new SoldeDTO($portefeuille->solde);
+        return $this->soldeResponse($dto);
     }
 
     // 2.2 Historique des Transactions
     public function historiqueTransactions($utilisateur, $filters, $page, $limite)
     {
-        $query = Transaction::where('id_utilisateur', $utilisateur->id);
+        // Business logic: Récupérer les transactions paginées
+        $paginator = $this->transactionRepository->findByUserId(
+            $utilisateur->id,
+            $filters,
+            $page,
+            $limite
+        );
 
-        if (isset($filters['type']) && $filters['type'] !== 'tous') {
-            $query->where('type', $filters['type']);
-        }
+        // Business logic: Transformer les données pour inclure destinataire/marchand
+        $paginator = $this->enrichTransactionsWithRelations($paginator);
 
-        if (isset($filters['dateDebut'])) {
-            $query->whereDate('date_transaction', '>=', $filters['dateDebut']);
-        }
+        // Business logic: Créer le DTO et retourner la réponse
+        $dto = HistoriqueTransactionsDTO::fromPaginator($paginator);
+        return $this->historiqueTransactionsResponse($dto);
+    }
 
-        if (isset($filters['dateFin'])) {
-            $query->whereDate('date_transaction', '<=', $filters['dateFin']);
-        }
-
-        if (isset($filters['statut'])) {
-            $query->where('statut', $filters['statut']);
-        }
-
-        $transactions = $query->orderBy('date_transaction', 'desc')
-                              ->paginate($limite, ['*'], 'page', $page);
-
-        $data = $transactions->map(function ($transaction) {
+    private function enrichTransactionsWithRelations(LengthAwarePaginator $paginator): LengthAwarePaginator
+    {
+        $paginator->getCollection()->transform(function ($transaction) {
             $destinataire = null;
             $marchand = null;
 
@@ -69,62 +71,37 @@ class PortefeuilleService implements PortefeuilleServiceInterface
                 }
             } elseif ($transaction->type === 'paiement') {
                 $paiement = $transaction->paiement;
-                if ($paiement) {
+                if ($paiement && $paiement->marchand) {
                     $marchand = [
                         'nom' => $paiement->marchand->nom,
-                        'categorie' => 'General', // Assuming no category in marchand table
+                        'categorie' => $paiement->marchand->categorie ?? 'General',
                     ];
                 }
             }
 
-            return [
-                'idTransaction' => $transaction->id,
-                'type' => $transaction->type,
-                'montant' => $transaction->montant,
-                'devise' => $transaction->devise,
-                'destinataire' => $destinataire,
-                'marchand' => $marchand,
-                'statut' => $transaction->statut,
-                'dateTransaction' => $transaction->date_transaction->toISOString(),
-                'reference' => $transaction->reference,
-                'frais' => $transaction->frais,
-            ];
+            $transaction->destinataire = $destinataire;
+            $transaction->marchand = $marchand;
+
+            return $transaction;
         });
 
-        return [
-            'success' => true,
-            'data' => [
-                'transactions' => $data,
-                'pagination' => [
-                    'pageActuelle' => $transactions->currentPage(),
-                    'totalPages' => $transactions->lastPage(),
-                    'totalElements' => $transactions->total(),
-                    'elementsParPage' => $transactions->perPage(),
-                ]
-            ]
-        ];
+        return $paginator;
     }
 
     // 2.3 Détails d'une Transaction
     public function detailsTransaction($utilisateur, $idTransaction)
     {
-        $transaction = Transaction::where('id', $idTransaction)
-                                  ->where('id_utilisateur', $utilisateur->id)
-                                  ->first();
+        // Business logic: Trouver la transaction
+        $transaction = $this->transactionRepository->findById($idTransaction);
 
-        if (!$transaction) {
-            return [
-                'success' => false,
-                'error' => [
-                    'code' => 'WALLET_001',
-                    'message' => 'Transaction introuvable'
-                ],
-                'status' => 404
-            ];
+        if (!$transaction || $transaction->id_utilisateur !== $utilisateur->id) {
+            return $this->portefeuilleErrorResponse('Transaction introuvable', 404);
         }
 
+        // Business logic: Construire les informations d'expéditeur/destinataire
         $expediteur = null;
         $destinataire = null;
+        $note = null;
 
         if ($transaction->type === 'transfert') {
             $expediteur = [
@@ -134,27 +111,28 @@ class PortefeuilleService implements PortefeuilleServiceInterface
             $transfert = $transaction->transfert;
             if ($transfert) {
                 $destinataire = [
-                    'numeroTelephone' => $transfert->destinataire->numero_telephone,
+                    'numeroTelephone' => $transfert->numero_telephone_destinataire,
                     'nom' => $transfert->nom_destinataire,
                 ];
+                $note = $transfert->note;
             }
         }
 
-        return [
-            'success' => true,
-            'data' => [
-                'idTransaction' => $transaction->id,
-                'type' => $transaction->type,
-                'montant' => $transaction->montant,
-                'devise' => $transaction->devise,
-                'expediteur' => $expediteur,
-                'destinataire' => $destinataire,
-                'statut' => $transaction->statut,
-                'dateTransaction' => $transaction->date_transaction->toISOString(),
-                'reference' => $transaction->reference,
-                'frais' => $transaction->frais,
-                'note' => $transaction->transfert ? $transaction->transfert->note : null,
-            ]
-        ];
+        // Business logic: Créer le DTO et retourner la réponse
+        $dto = new DetailsTransactionDTO(
+            $transaction->id,
+            $transaction->type,
+            $transaction->montant,
+            $transaction->devise,
+            $expediteur,
+            $destinataire,
+            $transaction->statut,
+            $transaction->date_transaction->toISOString(),
+            $transaction->reference,
+            $transaction->frais,
+            $note
+        );
+
+        return $this->detailsTransactionResponse($dto);
     }
 }

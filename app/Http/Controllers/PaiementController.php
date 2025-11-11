@@ -8,6 +8,7 @@ use App\Http\Requests\SaisirCodeRequest;
 use App\Http\Requests\InitierPaiementRequest;
 use App\Http\Requests\ConfirmerPaiementRequest;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class PaiementController extends Controller
 {
@@ -55,7 +56,7 @@ class PaiementController extends Controller
      *     )
      * )
      */
-    public function scannerQR(ScannerQRRequest $request)
+    public function scannerQR(ScannerQRRequest $request): JsonResponse
     {
         $result = $this->paiementService->scannerQR($request->donneesQR);
         return $this->responseFromResult($result);
@@ -97,7 +98,7 @@ class PaiementController extends Controller
      *     )
      * )
      */
-    public function saisirCode(SaisirCodeRequest $request)
+    public function saisirCode(SaisirCodeRequest $request): JsonResponse
     {
         $result = $this->paiementService->saisirCode($request->code);
         return $this->responseFromResult($result);
@@ -147,7 +148,7 @@ class PaiementController extends Controller
      *     )
      * )
      */
-    public function confirmerPaiement(ConfirmerPaiementRequest $request, $idPaiement)
+    public function confirmerPaiement(ConfirmerPaiementRequest $request, $idPaiement): JsonResponse
     {
         $utilisateur = $request->user();
         $result = $this->paiementService->confirmerPaiement($utilisateur, $idPaiement, $request->codePin);
@@ -190,7 +191,7 @@ class PaiementController extends Controller
      *     )
      * )
      */
-    public function annulerPaiement(Request $request, $idPaiement)
+    public function annulerPaiement(Request $request, $idPaiement): JsonResponse
     {
         $utilisateur = $request->user();
         $result = $this->paiementService->annulerPaiement($utilisateur, $idPaiement);

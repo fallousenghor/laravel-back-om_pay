@@ -87,6 +87,26 @@ class Transaction extends Model
         return $query->whereBetween('date_transaction', [$debut, $fin]);
     }
 
+    public function scopeByUser($query, $userId)
+    {
+        return $query->where('id_utilisateur', $userId);
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('statut', 'en_attente');
+    }
+
+    public function scopeByReference($query, $reference)
+    {
+        return $query->where('reference', $reference);
+    }
+
+    public function scopeById($query, $id)
+    {
+        return $query->where('id', $id);
+    }
+
     // Methods
     public function initier(): bool
     {

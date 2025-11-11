@@ -2,9 +2,10 @@
 
 namespace App\Services;
 
+use App\Interfaces\OtpServiceInterface;
 use Carbon\Carbon;
 
-class OtpService
+class OtpService implements OtpServiceInterface
 {
     // Générer un OTP
     public function generateOtp()

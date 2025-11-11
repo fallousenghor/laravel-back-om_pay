@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\AuthenticationService;
+use App\Interfaces\AuthenticationServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Exception;
@@ -35,7 +35,7 @@ class AuthController extends Controller
 {
     protected $authService;
 
-    public function __construct(AuthenticationService $authService)
+    public function __construct(AuthenticationServiceInterface $authService)
     {
         $this->authService = $authService;
     }
@@ -86,7 +86,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Code de vérification envoyé avec succès',
+                'message' => __('messages.fr.auth.initiate_registration.success'),
                 'data' => [
                     'token' => explode('/', $result['lien'])[4],
                     'code_otp' => $result['code'], // À supprimer en production
@@ -95,7 +95,7 @@ class AuthController extends Controller
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => __('messages.fr.auth.initiate_registration.phone_invalid')
             ], 400);
         }
     }
@@ -170,24 +170,12 @@ class AuthController extends Controller
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => __('messages.fr.auth.verify_otp.invalid')
             ], 400);
         }
     }
 
 
-    // 1.1 Créer Compte (alias pour initier-inscription)
-    public function creerCompte(InitierInscriptionRequest $request)
-    {
-        return $this->initierInscription($request);
-    }
-
-    // 1.2 Vérification OTP (pour connexion existante)
-    public function verificationOtp(VerificationOtpRequest $request)
-    {
-        $result = $this->authService->verificationOtp($request->numeroTelephone, $request->codeOTP);
-        return $this->responseFromResult($result);
-    }
 
     /**
      * @OA\Post(
@@ -237,7 +225,7 @@ class AuthController extends Controller
             // Retourner uniquement le token de session (pas l'objet utilisateur)
             return response()->json([
                 'success' => true,
-                'message' => 'Connexion réussie',
+                'message' => __('messages.fr.auth.login.success'),
                 'data' => [
                     'session_token' => $result['session_token'] ?? null
                 ]
@@ -245,7 +233,7 @@ class AuthController extends Controller
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => __('messages.fr.auth.login.invalid_credentials')
             ], 401);
         }
     }
@@ -282,51 +270,14 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => $result['message']
+                'message' => __('messages.fr.auth.logout.success')
             ]);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => __('messages.fr.errors.server_error')
             ], 400);
         }
     }
 
-    // 1.6 Consulter Profil
-    public function consulterProfil(Request $request)
-    {
-        $utilisateur = $request->user();
-        $result = $this->userService->consulterProfil($utilisateur);
-        return $this->responseFromResult($result);
-    }
-
-    // 1.7 Mettre à jour Profil
-    public function mettreAJourProfil(MettreAJourProfilRequest $request)
-    {
-        $utilisateur = $request->user();
-
-        // Vérifier le PIN avant mise à jour
-        if (!$this->securityService->verifierPin($utilisateur, $request->codePin)) {
-            return $this->errorResponse('USER_006', 'PIN incorrect', [], 401);
-        }
-
-        $result = $this->userService->mettreAJourProfil($utilisateur, $request->only(['prenom', 'nom', 'email']));
-        return $this->responseFromResult($result);
-    }
-
-    // 1.8 Changer le Code PIN
-    public function changerPin(ChangerPinRequest $request)
-    {
-        $utilisateur = $request->user();
-        $result = $this->securityService->changerPin($utilisateur, $request->ancienPin, $request->nouveauPin);
-        return $this->responseFromResult($result);
-    }
-
-    // 1.9 Activer la Biométrie
-    public function activerBiometrie(ActiverBiometrieRequest $request)
-    {
-        $utilisateur = $request->user();
-        $result = $this->securityService->activerBiometrie($utilisateur, $request->codePin, $request->jetonBiometrique);
-        return $this->responseFromResult($result);
-    }
 }

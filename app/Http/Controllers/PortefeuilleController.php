@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Interfaces\PortefeuilleServiceInterface;
 use App\Http\Requests\HistoriqueTransactionsRequest;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class PortefeuilleController extends Controller
 {
@@ -43,7 +44,7 @@ class PortefeuilleController extends Controller
      *     )
      * )
      */
-    public function consulterSolde(Request $request)
+    public function consulterSolde(Request $request): JsonResponse
     {
         $utilisateur = $request->user();
         $result = $this->portefeuilleService->consulterSolde($utilisateur);
@@ -113,7 +114,7 @@ class PortefeuilleController extends Controller
      *     )
      * )
      */
-    public function historiqueTransactions(HistoriqueTransactionsRequest $request)
+    public function historiqueTransactions(HistoriqueTransactionsRequest $request): JsonResponse
     {
         $utilisateur = $request->user();
         $page = $request->get('page', 1);
@@ -164,7 +165,7 @@ class PortefeuilleController extends Controller
      *     )
      * )
      */
-    public function detailsTransaction(Request $request, $idTransaction)
+    public function detailsTransaction(Request $request, $idTransaction): JsonResponse
     {
         $utilisateur = $request->user();
         $result = $this->portefeuilleService->detailsTransaction($utilisateur, $idTransaction);
