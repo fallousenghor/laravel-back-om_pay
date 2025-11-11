@@ -439,13 +439,20 @@
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "code"
+                                    "code",
+                                    "montant"
                                 ],
                                 "properties": {
                                     "code": {
                                         "description": "Code de paiement fourni par le marchand",
                                         "type": "string",
                                         "example": "PAY123456"
+                                    },
+                                    "montant": {
+                                        "description": "Montant du paiement en XOF",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 5000
                                     }
                                 },
                                 "type": "object"
@@ -466,15 +473,41 @@
                                         },
                                         "data": {
                                             "properties": {
+                                                "idPaiement": {
+                                                    "type": "string",
+                                                    "example": "OM20251111131953ABC123"
+                                                },
                                                 "marchand": {
+                                                    "properties": {
+                                                        "idMarchand": {
+                                                            "type": "string"
+                                                        },
+                                                        "nom": {
+                                                            "type": "string"
+                                                        },
+                                                        "logo": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        }
+                                                    },
                                                     "type": "object"
                                                 },
                                                 "montant": {
                                                     "type": "number",
-                                                    "format": "float"
+                                                    "format": "float",
+                                                    "example": 5000
                                                 },
-                                                "reference": {
-                                                    "type": "string"
+                                                "devise": {
+                                                    "type": "string",
+                                                    "example": "XOF"
+                                                },
+                                                "dateExpiration": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "valide": {
+                                                    "type": "boolean",
+                                                    "example": true
                                                 }
                                             },
                                             "type": "object"
@@ -541,6 +574,12 @@
                                     "codePin"
                                 ],
                                 "properties": {
+                                    "montant": {
+                                        "description": "Montant du paiement (optionnel pour vérification)",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 2000
+                                    },
                                     "codePin": {
                                         "description": "Code PIN de l'utilisateur",
                                         "type": "string",

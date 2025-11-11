@@ -88,7 +88,7 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'Code de vérification envoyé avec succès',
                 'data' => [
-                    'token' => explode('/', $result['lien'])[4],
+                    'token' => basename($result['lien']),
                     'code_otp' => $result['code'], // À supprimer en production
                 ]
             ]);

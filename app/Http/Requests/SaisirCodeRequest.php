@@ -24,6 +24,7 @@ class SaisirCodeRequest extends FormRequest
         return [
             // Allow alphanumeric merchant codes (letters and digits), exactly 8 chars
             'code' => 'required|string|size:8|regex:/^[A-Za-z0-9]{8}$/',
+            'montant' => 'required|numeric|min:100|max:1000000',
         ];
     }
 
@@ -39,6 +40,10 @@ class SaisirCodeRequest extends FormRequest
             'code.string' => 'Le code doit être une chaîne de caractères.',
             'code.size' => 'Le code doit contenir exactement 8 caractères.',
             'code.regex' => 'Le code doit contenir uniquement des lettres et des chiffres (alphanumérique).',
+            'montant.required' => 'Le montant est requis.',
+            'montant.numeric' => 'Le montant doit être un nombre.',
+            'montant.min' => 'Le montant minimum est de 100 XOF.',
+            'montant.max' => 'Le montant maximum est de 1 000 000 XOF.',
         ];
     }
 }

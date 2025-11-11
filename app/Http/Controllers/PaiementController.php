@@ -71,8 +71,9 @@ class PaiementController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"code"},
-     *             @OA\Property(property="code", type="string", example="PAY123456", description="Code de paiement fourni par le marchand")
+     *             required={"code","montant"},
+     *             @OA\Property(property="code", type="string", example="PAY123456", description="Code de paiement fourni par le marchand"),
+     *             @OA\Property(property="montant", type="number", format="float", example=5000, description="Montant du paiement en XOF")
      *         )
      *     ),
      *     @OA\Response(
@@ -81,9 +82,16 @@ class PaiementController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="object",
-     *                 @OA\Property(property="marchand", type="object"),
-     *                 @OA\Property(property="montant", type="number", format="float"),
-     *                 @OA\Property(property="reference", type="string")
+     *                 @OA\Property(property="idPaiement", type="string", example="OM20251111131953ABC123"),
+     *                 @OA\Property(property="marchand", type="object",
+     *                     @OA\Property(property="idMarchand", type="string"),
+     *                     @OA\Property(property="nom", type="string"),
+     *                     @OA\Property(property="logo", type="string", nullable=true)
+     *                 ),
+     *                 @OA\Property(property="montant", type="number", format="float", example=5000),
+     *                 @OA\Property(property="devise", type="string", example="XOF"),
+     *                 @OA\Property(property="dateExpiration", type="string", format="date-time"),
+     *                 @OA\Property(property="valide", type="boolean", example=true)
      *             )
      *         )
      *     ),
@@ -99,7 +107,8 @@ class PaiementController extends Controller
      */
     public function saisirCode(SaisirCodeRequest $request)
     {
-        $result = $this->paiementService->saisirCode($request->code);
+        $utilisateur = $request->user();
+        $result = $this->paiementService->saisirCode($utilisateur, $request->code, $request->montant);
         return $this->responseFromResult($result);
     }
 
@@ -122,6 +131,7 @@ class PaiementController extends Controller
      *         required=true,
      *         @OA\JsonContent(
      *             required={"codePin"},
+     *             @OA\Property(property="montant", type="number", format="float", example=2000, description="Montant du paiement (optionnel pour vérification)"),
      *             @OA\Property(property="codePin", type="string", example="1234", description="Code PIN de l'utilisateur")
      *         )
      *     ),
@@ -150,7 +160,7 @@ class PaiementController extends Controller
     public function confirmerPaiement(ConfirmerPaiementRequest $request, $idPaiement)
     {
         $utilisateur = $request->user();
-        $result = $this->paiementService->confirmerPaiement($utilisateur, $idPaiement, $request->codePin);
+        $result = $this->paiementService->confirmerPaiement($utilisateur, $idPaiement, $request->codePin, $request->montant);
         return $this->responseFromResult($result);
     }
 

@@ -22,6 +22,7 @@ class ConfirmerPaiementRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'montant' => 'sometimes|numeric|min:1',
             'codePin' => 'required|string|size:4|regex:/^[0-9]{4}$/',
         ];
     }

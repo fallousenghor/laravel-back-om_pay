@@ -105,44 +105,82 @@ class PaiementService implements PaiementServiceInterface
     }
 
     // 4.3 Saisir un Code de Paiement
-    public function saisirCode($code)
+    public function saisirCode($utilisateur, $code, $montant)
     {
-        // The merchant code can be stored directly on the OrangeMoney accounts (nullable)
-        $compte = OrangeMoney::where('code', $code)
-                              ->where('status', 'active')
-                              ->first();
+        try {
+            // The merchant code can be stored directly on the OrangeMoney accounts (nullable)
+            $compte = OrangeMoney::where('code', $code)
+                                  ->where('status', 'active')
+                                  ->first();
 
-        if (!$compte) {
+            if (!$compte) {
+                return [
+                    'success' => false,
+                    'error' => [
+                        'code' => 'PAYMENT_006',
+                        'message' => 'Code de paiement invalide'
+                    ],
+                    'status' => 422
+                ];
+            }
+
+            // Vérifier le solde de l'utilisateur
+            $portefeuille = $utilisateur->portefeuille;
+            if (!$portefeuille || $portefeuille->solde < $montant) {
+                return [
+                    'success' => false,
+                    'error' => [
+                        'code' => 'WALLET_001',
+                        'message' => 'Solde insuffisant'
+                    ],
+                    'status' => 422
+                ];
+            }
+
+            // Créer la transaction en attente (comme pour les transferts)
+            $transaction = new Transaction();
+            $transaction->id_utilisateur = $utilisateur->id;
+            $transaction->type = 'paiement';
+            $transaction->montant = $montant;
+            $transaction->devise = 'XOF';
+            $transaction->nom_marchand = ($compte->prenom ?? '') . ' ' . ($compte->nom ?? '');
+            $transaction->categorie_marchand = 'Code marchand'; // Catégorie par défaut
+            $transaction->initier(); // Génère la référence et met le statut
+
+            // Créer l'enregistrement de paiement dans la table paiements séparée
+            $paiement = new Paiement();
+            $paiement->id_transaction = $transaction->id;
+            $paiement->id_marchand = null; // Pour code marchand, pas de marchand spécifique
+            $paiement->mode_paiement = 'code_marchand';
+            $paiement->details_paiement = json_encode(['code' => $code, 'compte_id' => $compte->id]);
+            $paiement->save();
+
+            return [
+                'success' => true,
+                'data' => [
+                    'idPaiement' => $transaction->reference, // Utilise la référence pour confirmer
+                    'marchand' => [
+                        'idMarchand' => $compte->id,
+                        'nom' => ($compte->prenom ?? '') . ' ' . ($compte->nom ?? ''),
+                        'logo' => null,
+                    ],
+                    'montant' => $montant,
+                    'devise' => 'XOF',
+                    'dateExpiration' => $transaction->created_at->addMinutes(5)->toIso8601String(),
+                    'valide' => true,
+                ],
+                'message' => 'Code validé avec succès. Veuillez confirmer le paiement avec votre code PIN'
+            ];
+        } catch (\Exception $e) {
             return [
                 'success' => false,
                 'error' => [
-                    'code' => 'PAYMENT_006',
-                    'message' => 'Code de paiement invalide'
+                    'code' => 'PAYMENT_007',
+                    'message' => 'Erreur lors du traitement du code de paiement: ' . $e->getMessage()
                 ],
-                'status' => 422
+                'status' => 500
             ];
         }
-
-        $idCode = 'cod_' . Str::random(10);
-
-        return [
-            'success' => true,
-            'data' => [
-                'idCode' => $idCode,
-                'marchand' => [
-                    // OrangeMoney entry acts as merchant account for the code
-                    'idMarchand' => $compte->id,
-                    'nom' => ($compte->prenom ?? '') . ' ' . ($compte->nom ?? ''),
-                    'logo' => null,
-                ],
-                // No fixed amount for merchant code stored on OrangeMoney by default
-                'montant' => null,
-                'devise' => 'XOF',
-                'dateExpiration' => null,
-                'valide' => true,
-            ],
-            'message' => 'Code validé avec succès'
-        ];
     }
 
     // 4.4 Initier un Paiement
@@ -212,7 +250,7 @@ class PaiementService implements PaiementServiceInterface
     }
 
     // 4.5 Confirmer un Paiement
-    public function confirmerPaiement($utilisateur, $idPaiement, $codePin)
+    public function confirmerPaiement($utilisateur, $idPaiement, $codePin, $montant = null)
     {
         // Le paramètre idPaiement peut être soit un UUID (id), soit une référence
         $transaction = Transaction::where('reference', $idPaiement)
@@ -238,6 +276,18 @@ class PaiementService implements PaiementServiceInterface
                     'message' => 'Paiement introuvable ou déjà confirmé'
                 ],
                 'status' => 404
+            ];
+        }
+
+        // Validate montant if provided
+        if ($montant !== null && $transaction->montant != $montant) {
+            return [
+                'success' => false,
+                'error' => [
+                    'code' => 'PAYMENT_012',
+                    'message' => 'Montant incorrect'
+                ],
+                'status' => 422
             ];
         }
 
@@ -289,16 +339,9 @@ class PaiementService implements PaiementServiceInterface
         return [
             'success' => true,
             'data' => [
-                'idTransaction' => $result['idTransaction'],
-                'statut' => 'termine',
-                'marchand' => [
-                    'nom' => $transaction->nom_marchand,
-                    'categorie' => $transaction->categorie_marchand,
-                ],
-                'montant' => $transaction->montant,
-                'dateTransaction' => $transaction->date_transaction->toIso8601String(),
-                'reference' => $result['reference'],
-                'recu' => 'https://cdn.ompay.sn/recus/' . $result['idTransaction'] . '.pdf',
+                'idPaiement' => $result['reference'],
+                'statut' => 'REUSSI',
+                'dateExecution' => $transaction->date_transaction->toIso8601String(),
             ],
             'message' => 'Paiement effectué avec succès'
         ];
@@ -308,22 +351,22 @@ class PaiementService implements PaiementServiceInterface
     public function annulerPaiement($utilisateur, $idPaiement)
     {
         // Le paramètre idPaiement peut être soit un UUID (id), soit une référence
-        $paiement = Paiement::where('reference', $idPaiement)
-                            ->where('id_utilisateur', $utilisateur->id)
-                            ->where('type', 'paiement')
-                            ->where('statut', 'en_attente')
-                            ->first();
+        $transaction = Transaction::where('reference', $idPaiement)
+                                   ->where('id_utilisateur', $utilisateur->id)
+                                   ->where('type', 'paiement')
+                                   ->where('statut', 'en_attente')
+                                   ->first();
 
         // Si pas trouvé par référence, essayer par id
-        if (!$paiement) {
-            $paiement = Paiement::where('id', $idPaiement)
-                                ->where('id_utilisateur', $utilisateur->id)
-                                ->where('type', 'paiement')
-                                ->where('statut', 'en_attente')
-                                ->first();
+        if (!$transaction) {
+            $transaction = Transaction::where('id', $idPaiement)
+                                       ->where('id_utilisateur', $utilisateur->id)
+                                       ->where('type', 'paiement')
+                                       ->where('statut', 'en_attente')
+                                       ->first();
         }
 
-        if (!$paiement) {
+        if (!$transaction) {
             return [
                 'success' => false,
                 'error' => [
@@ -334,9 +377,8 @@ class PaiementService implements PaiementServiceInterface
             ];
         }
 
-        // Les paiements n'ont pas de date d'expiration, on procède directement à l'annulation
-        // Transition de l'état via la transaction
-        if (!$paiement->annuler()) {
+        // Annuler la transaction
+        if (!$transaction->annuler()) {
             return [
                 'success' => false,
                 'error' => [
@@ -351,9 +393,9 @@ class PaiementService implements PaiementServiceInterface
             'success' => true,
             'message' => 'Paiement annulé avec succès',
             'data' => [
-                'idPaiement' => $paiement->id,
+                'idPaiement' => $transaction->reference,
                 'statut' => 'ANNULE',
-                'dateAnnulation' => $paiement->updated_at->toIso8601String(),
+                'dateAnnulation' => $transaction->updated_at->toIso8601String(),
             ]
         ];
     }

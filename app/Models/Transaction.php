@@ -113,6 +113,7 @@ class Transaction extends Model
 
         // DB expects 'termine' for a successful transaction
         $this->statut = 'termine';
+        $this->date_transaction = now();
         return $this->save();
     }
 

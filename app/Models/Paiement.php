@@ -7,24 +7,30 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
-class Paiement extends Transaction
+class Paiement extends Model
 {
     use HasFactory;
 
-    protected $table = 'transactions';
+    protected $table = 'paiements';
+
+    public $incrementing = false; // UUID, donc pas d'auto-incrément
+    protected $keyType = 'string'; // la clé primaire est une chaîne (UUID)
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->{$model->getKeyName()})) {
+                $model->{$model->getKeyName()} = (string) Str::uuid();
+            }
+        });
+    }
 
     protected $fillable = [
-        'id_utilisateur',
-        'type',
-        'montant',
-        'devise',
-        'statut',
-        'frais',
-        'reference',
-        'nom_marchand',
-        'categorie_marchand',
-        'note',
+        'id_transaction',
         'id_marchand',
         'mode_paiement',
         'details_paiement',
@@ -38,6 +44,11 @@ class Paiement extends Transaction
     ];
 
     // Relationships
+    public function transaction(): BelongsTo
+    {
+        return $this->belongsTo(Transaction::class, 'id_transaction');
+    }
+
     public function marchand(): BelongsTo
     {
         return $this->belongsTo(Marchand::class, 'id_marchand');
@@ -86,7 +97,7 @@ class Paiement extends Transaction
 
     public function confirmerAvecPin(string $pin): bool
     {
-        $utilisateur = $this->transaction->portefeuille->utilisateur;
+        $utilisateur = $this->transaction->utilisateur;
 
         if (!$utilisateur->code_pin || !Hash::check($pin, $utilisateur->code_pin)) {
             return false;
@@ -98,22 +109,11 @@ class Paiement extends Transaction
     protected function executerPaiement(): bool
     {
         DB::transaction(function () {
-            // Créer la transaction
-            $transaction = Transaction::create([
-                'id_portefeuille' => $this->transaction->portefeuille->id,
-                'type' => 'paiement',
-                'montant' => $this->transaction->montant,
-                'devise' => $this->transaction->devise,
-                'frais' => 0, // Pas de frais pour les paiements
-                'reference' => $this->transaction->reference,
-                'date_transaction' => now(),
-            ]);
-
-            $this->id_transaction = $transaction->id;
-            $this->save();
+            // La transaction est déjà créée, on la récupère
+            $transaction = $this->transaction;
 
             // Débiter l'utilisateur
-            $this->transaction->portefeuille->debiter($this->transaction->montant);
+            $transaction->utilisateur->portefeuille->decrement('solde', $transaction->montant);
 
             // Marquer le QR code ou code de paiement comme utilisé
             if ($this->qrCode) {

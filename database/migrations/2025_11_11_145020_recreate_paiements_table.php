@@ -9,17 +9,16 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public $withinTransaction = false;
     public function up(): void
     {
         Schema::create('paiements', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('id_transaction')->constrained('transactions')->onDelete('cascade');
-            $table->foreignUuid('id_marchand')->nullable()->constrained('marchands');
+            $table->uuid('id_marchand')->nullable();
             $table->enum('mode_paiement', ['qr_code', 'code_numerique', 'code_marchand']);
             $table->json('details_paiement')->nullable();
-            $table->foreignUuid('id_qr_code')->nullable()->constrained('qr_codes')->onDelete('set null');
-            $table->foreignUuid('id_code_paiement')->nullable()->constrained('code_paiements')->onDelete('set null');
+            $table->uuid('id_qr_code')->nullable();
+            $table->uuid('id_code_paiement')->nullable();
             $table->timestamps();
 
             $table->index(['id_marchand', 'mode_paiement']);

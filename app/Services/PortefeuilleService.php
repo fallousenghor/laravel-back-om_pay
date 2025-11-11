@@ -52,7 +52,8 @@ class PortefeuilleService implements PortefeuilleServiceInterface
             $query->where('statut', $filters['statut']);
         }
 
-        $transactions = $query->orderBy('date_transaction', 'desc')
+        $transactions = $query->with(['transfert', 'paiement.marchand'])
+                              ->orderBy('date_transaction', 'desc')
                               ->paginate($limite, ['*'], 'page', $page);
 
         $data = $transactions->map(function ($transaction) {
@@ -66,13 +67,25 @@ class PortefeuilleService implements PortefeuilleServiceInterface
                         'numeroTelephone' => $transfert->numero_telephone_destinataire,
                         'nom' => $transfert->nom_destinataire,
                     ];
+                } elseif ($transaction->numero_telephone_destinataire && $transaction->nom_destinataire) {
+                    // Fallback to transaction fields if transfert relation is null
+                    $destinataire = [
+                        'numeroTelephone' => $transaction->numero_telephone_destinataire,
+                        'nom' => $transaction->nom_destinataire,
+                    ];
                 }
             } elseif ($transaction->type === 'paiement') {
                 $paiement = $transaction->paiement;
-                if ($paiement) {
+                if ($paiement && $paiement->marchand) {
                     $marchand = [
                         'nom' => $paiement->marchand->nom,
-                        'categorie' => 'General', // Assuming no category in marchand table
+                        'categorie' => $transaction->categorie_marchand ?? 'General',
+                    ];
+                } elseif ($transaction->nom_marchand && $transaction->categorie_marchand) {
+                    // Fallback to transaction fields if paiement relation is null
+                    $marchand = [
+                        'nom' => $transaction->nom_marchand,
+                        'categorie' => $transaction->categorie_marchand,
                     ];
                 }
             }
@@ -134,8 +147,14 @@ class PortefeuilleService implements PortefeuilleServiceInterface
             $transfert = $transaction->transfert;
             if ($transfert) {
                 $destinataire = [
-                    'numeroTelephone' => $transfert->destinataire->numero_telephone,
+                    'numeroTelephone' => $transfert->numero_telephone_destinataire,
                     'nom' => $transfert->nom_destinataire,
+                ];
+            } elseif ($transaction->numero_telephone_destinataire && $transaction->nom_destinataire) {
+                // Fallback to transaction fields if transfert relation is null
+                $destinataire = [
+                    'numeroTelephone' => $transaction->numero_telephone_destinataire,
+                    'nom' => $transaction->nom_destinataire,
                 ];
             }
         }
