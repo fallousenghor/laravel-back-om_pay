@@ -18,6 +18,11 @@ use Exception;
  *     url="http://localhost:8000/api",
  *     description="Serveur de développement"
  * )
+ * 
+ * @OA\Server(
+ *     url="https://om-pay-mk4h.onrender.com/api",
+ *     description="Serveur de production"
+ * )
  *
  * @OA\SecurityScheme(
  *     securityScheme="bearerAuth",

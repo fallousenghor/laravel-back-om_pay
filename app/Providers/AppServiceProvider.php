@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\URL;
 use App\Interfaces\PortefeuilleServiceInterface;
 use App\Interfaces\TransfertServiceInterface;
 use App\Interfaces\PaiementServiceInterface;
@@ -38,6 +39,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Force HTTPS scheme for generated URLs when running in production
+        // or when FORCE_HTTPS env var is set. This prevents mixed-content
+        // issues for assets (e.g. swagger-ui.css) when the site is served
+        // over HTTPS but APP_URL or URL generation defaults to http.
+        if (app()->environment('production') || env('FORCE_HTTPS', false)) {
+            URL::forceScheme('https');
+        }
     }
 }

@@ -9,6 +9,10 @@
         {
             "url": "http://localhost:8000/api",
             "description": "Serveur de développement"
+        },
+        {
+            "url": "https://om-pay-mk4h.onrender.com/api",
+            "description": "Serveur de production"
         }
     ],
     "paths": {

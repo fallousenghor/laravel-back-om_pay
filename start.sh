@@ -9,6 +9,21 @@ if [ "$DB_CONNECTION" = "pgsql" ]; then
   echo "PostgreSQL is ready!"
 fi
 
+# If env.production exists in the image, copy it to .env at runtime so
+# runtime env is used (prevents using .env baked at build time).
+if [ -f /var/www/html/env.production ]; then
+  echo "Found env.production - copying to .env"
+  cp /var/www/html/env.production /var/www/html/.env
+fi
+
+# If APP_KEY is not set, generate one
+if [ -f /var/www/html/.env ]; then
+  if ! grep -q "^APP_KEY=\S" /var/www/html/.env; then
+    echo "Generating APP_KEY"
+    php artisan key:generate --force
+  fi
+fi
+
 # Run database migrations (if needed)
 php artisan migrate --force
 

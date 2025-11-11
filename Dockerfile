@@ -12,11 +12,13 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libzip-dev \
+    libpq-dev \
     zip \
     unzip \
     nodejs \
     npm \
-    && docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd zip
+    && docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd zip \
+    && rm -rf /var/lib/apt/lists/*
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -37,8 +39,10 @@ RUN chmod +x /usr/local/bin/start.sh
 # Copy existing application directory permissions
 COPY --chown=www-data:www-data . /var/www/html
 
-# Create .env file and generate application key
-RUN cp .env.example .env && php artisan key:generate --force --no-interaction
+# NOTE: Do not create .env at build time. .env should be provided at runtime
+# via environment variables or an env.production file. Creating .env during
+# build can bake development settings into the image and cause connection
+# issues in production.
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
