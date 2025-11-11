@@ -217,6 +217,20 @@ class AuthenticationService
             throw new \Exception('Impossible de générer un QR code: utilisateur introuvable');
         }
 
+        // Vérifier si un QR code valide existe déjà pour cet utilisateur
+        $existingQr = QRCode::where('id_utilisateur', $utilisateur->id)
+            ->where('utilise', false)
+            ->where('date_expiration', '>', Carbon::now())
+            ->first();
+
+        if ($existingQr) {
+            return [
+                'id' => $existingQr->id,
+                'data' => $existingQr->generer(),
+                'expires_at' => $existingQr->date_expiration
+            ];
+        }
+
         // Créer un QR code personnel pour l'utilisateur
         $qrCode = QRCode::create([
             'id_utilisateur' => $utilisateur->id,
@@ -256,9 +270,13 @@ class AuthenticationService
             // Créer une session
             $session = $this->createSession($utilisateur);
 
+            // Générer ou récupérer le QR code
+            $qrCode = $this->generateUserQRCode($utilisateur);
+
             return [
                 'session_token' => $session->token,
                 'user' => $utilisateur,
+                'qr_code' => $qrCode,
                 'first_login' => true
             ];
         }
@@ -271,9 +289,13 @@ class AuthenticationService
         // Créer une session
         $session = $this->createSession($utilisateur);
 
+        // Générer ou récupérer le QR code
+        $qrCode = $this->generateUserQRCode($utilisateur);
+
         return [
             'session_token' => $session->token,
             'user' => $utilisateur,
+            'qr_code' => $qrCode,
             'first_login' => false
         ];
     }

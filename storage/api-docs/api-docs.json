@@ -230,6 +230,24 @@
                                                 "session_token": {
                                                     "type": "string",
                                                     "example": "PMOfGqub4qI1LRynqATixgXiug0PnrCjgEF7VTJqOcazKv0XrFTEnLANQJkhnBbK"
+                                                },
+                                                "qr_code": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "example": "uuid"
+                                                        },
+                                                        "data": {
+                                                            "type": "string",
+                                                            "example": "json_encoded_qr_data"
+                                                        },
+                                                        "expires_at": {
+                                                            "type": "string",
+                                                            "format": "date-time",
+                                                            "example": "2035-11-11T12:16:47.954Z"
+                                                        }
+                                                    },
+                                                    "type": "object"
                                                 }
                                             },
                                             "type": "object"

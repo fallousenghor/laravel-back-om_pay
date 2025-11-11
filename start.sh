@@ -11,9 +11,9 @@ fi
 
 # If env.production exists in the image, copy it to .env at runtime so
 # runtime env is used (prevents using .env baked at build time).
-if [ -f /var/www/html/env.production ]; then
-  echo "Found env.production - copying to .env"
-  cp /var/www/html/env.production /var/www/html/.env
+if [ -f /var/www/html/.env.production ]; then
+  echo "Found .env.production - copying to .env"
+  cp /var/www/html/.env.production /var/www/html/.env
 fi
 
 # If APP_KEY is not set, generate one

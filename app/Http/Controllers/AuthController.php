@@ -210,7 +210,12 @@ class AuthController extends Controller
     *             @OA\Property(property="success", type="boolean", example=true),
     *             @OA\Property(property="message", type="string", example="Connexion réussie"),
     *             @OA\Property(property="data", type="object",
-    *                 @OA\Property(property="session_token", type="string", example="PMOfGqub4qI1LRynqATixgXiug0PnrCjgEF7VTJqOcazKv0XrFTEnLANQJkhnBbK")
+    *                 @OA\Property(property="session_token", type="string", example="PMOfGqub4qI1LRynqATixgXiug0PnrCjgEF7VTJqOcazKv0XrFTEnLANQJkhnBbK"),
+    *                 @OA\Property(property="qr_code", type="object",
+    *                     @OA\Property(property="id", type="string", example="uuid"),
+    *                     @OA\Property(property="data", type="string", example="json_encoded_qr_data"),
+    *                     @OA\Property(property="expires_at", type="string", format="date-time", example="2035-11-11T12:16:47.954Z")
+    *                 )
     *             )
     *         )
     *     ),
@@ -234,12 +239,13 @@ class AuthController extends Controller
 
             $result = $this->authService->login($request->numero_telephone, $request->code_pin);
 
-            // Retourner uniquement le token de session (pas l'objet utilisateur)
+            // Retourner le token de session et le QR code
             return response()->json([
                 'success' => true,
                 'message' => 'Connexion réussie',
                 'data' => [
-                    'session_token' => $result['session_token'] ?? null
+                    'session_token' => $result['session_token'] ?? null,
+                    'qr_code' => $result['qr_code'] ?? null
                 ]
             ]);
         } catch (Exception $e) {

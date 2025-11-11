@@ -82,12 +82,27 @@ class QRCode extends Model
     public function generer(): string
     {
         // Générer le contenu du QR code (simplifié)
-        return json_encode([
+        $data = [
             'id' => $this->id,
-            'marchand' => $this->marchand->nom,
             'montant' => $this->montant,
             'date_expiration' => $this->date_expiration->timestamp,
-        ]);
+        ];
+
+        // Ajouter les informations spécifiques selon le type de QR code
+        if ($this->id_utilisateur) {
+            // QR code utilisateur
+            $data['type'] = 'user_profile';
+            $data['user_id'] = $this->id_utilisateur;
+            $data['numero_telephone'] = $this->utilisateur->numero_telephone ?? null;
+            $data['nom'] = $this->utilisateur->nom ?? null;
+            $data['prenom'] = $this->utilisateur->prenom ?? null;
+        } elseif ($this->id_marchand) {
+            // QR code marchand
+            $data['type'] = 'merchant_payment';
+            $data['marchand'] = $this->marchand->nom ?? null;
+        }
+
+        return json_encode($data);
     }
 
     public static function decoder(string $donnees): ?array
