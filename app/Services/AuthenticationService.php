@@ -150,6 +150,7 @@ class AuthenticationService
         return [
             'status' => 'logged_in',
             'session_token' => $session->token,
+            'refresh_token' => $session->refresh_token,
             'user' => $utilisateur
         ];
     }
@@ -197,6 +198,7 @@ class AuthenticationService
 
         return [
             'session_token' => $session->token,
+            'refresh_token' => $session->refresh_token,
             'user' => $utilisateur,
             'qr_code' => $qrCode
         ];
@@ -207,6 +209,7 @@ class AuthenticationService
         return SessionOmpay::create([
             'utilisateur_id' => $utilisateur->id,
             'token' => Str::random(64),
+            'refresh_token' => Str::random(64),
             'last_activity' => Carbon::now()
         ]);
     }
@@ -275,6 +278,7 @@ class AuthenticationService
 
             return [
                 'session_token' => $session->token,
+                'refresh_token' => $session->refresh_token,
                 'user' => $utilisateur,
                 'qr_code' => $qrCode,
                 'first_login' => true
@@ -294,6 +298,7 @@ class AuthenticationService
 
         return [
             'session_token' => $session->token,
+            'refresh_token' => $session->refresh_token,
             'user' => $utilisateur,
             'qr_code' => $qrCode,
             'first_login' => false

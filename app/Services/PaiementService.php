@@ -183,6 +183,88 @@ class PaiementService implements PaiementServiceInterface
         }
     }
 
+    // 4.3.1 Saisir un Numéro de Téléphone pour Paiement
+    public function saisirNumeroTelephone($utilisateur, $numeroTelephone, $montant)
+    {
+        try {
+            // Normaliser le numéro de téléphone (supprimer le préfixe pays si présent)
+            $numeroNormalise = preg_replace('/^(?:\+221|221)?([7][0-8][0-9]{7})$/', '$1', $numeroTelephone);
+
+            // Rechercher le compte marchand par numéro de téléphone
+            $compte = OrangeMoney::where('numero_telephone', $numeroNormalise)
+                                  ->where('status', 'active')
+                                  ->first();
+
+            if (!$compte) {
+                return [
+                    'success' => false,
+                    'error' => [
+                        'code' => 'PAYMENT_013',
+                        'message' => 'Numéro de téléphone marchand invalide'
+                    ],
+                    'status' => 422
+                ];
+            }
+
+            // Vérifier le solde de l'utilisateur
+            $portefeuille = $utilisateur->portefeuille;
+            if (!$portefeuille || $portefeuille->solde < $montant) {
+                return [
+                    'success' => false,
+                    'error' => [
+                        'code' => 'WALLET_001',
+                        'message' => 'Solde insuffisant'
+                    ],
+                    'status' => 422
+                ];
+            }
+
+            // Créer la transaction en attente
+            $transaction = new Transaction();
+            $transaction->id_utilisateur = $utilisateur->id;
+            $transaction->type = 'paiement';
+            $transaction->montant = $montant;
+            $transaction->devise = 'XOF';
+            $transaction->nom_marchand = ($compte->prenom ?? '') . ' ' . ($compte->nom ?? '');
+            $transaction->categorie_marchand = 'Paiement mobile'; // Catégorie par défaut
+            $transaction->initier(); // Génère la référence et met le statut
+
+            // Créer l'enregistrement de paiement dans la table paiements séparée
+            $paiement = new Paiement();
+            $paiement->id_transaction = $transaction->id;
+            $paiement->id_marchand = null; // Pour paiement mobile, pas de marchand spécifique
+            $paiement->mode_paiement = 'code_marchand'; // Utilise le même mode que les paiements par code
+            $paiement->details_paiement = json_encode(['numero_telephone' => $numeroTelephone, 'numero_normalise' => $numeroNormalise, 'compte_id' => $compte->id, 'type' => 'numero_telephone']);
+            $paiement->save();
+
+            return [
+                'success' => true,
+                'data' => [
+                    'idPaiement' => $transaction->reference, // Utilise la référence pour confirmer
+                    'marchand' => [
+                        'idMarchand' => $compte->id,
+                        'nom' => ($compte->prenom ?? '') . ' ' . ($compte->nom ?? ''),
+                        'logo' => null,
+                    ],
+                    'montant' => $montant,
+                    'devise' => 'XOF',
+                    'dateExpiration' => $transaction->created_at->addMinutes(5)->toIso8601String(),
+                    'valide' => true,
+                ],
+                'message' => 'Numéro de téléphone validé avec succès. Veuillez confirmer le paiement avec votre code PIN'
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'error' => [
+                    'code' => 'PAYMENT_014',
+                    'message' => 'Erreur lors du traitement du numéro de téléphone: ' . $e->getMessage()
+                ],
+                'status' => 500
+            ];
+        }
+    }
+
     // 4.4 Initier un Paiement
     public function initierPaiement($utilisateur, $data)
     {

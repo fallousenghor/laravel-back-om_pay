@@ -34,7 +34,17 @@ class PortefeuilleService implements PortefeuilleServiceInterface
     // 2.2 Historique des Transactions
     public function historiqueTransactions($utilisateur, $filters, $page, $limite)
     {
-        $query = Transaction::where('id_utilisateur', $utilisateur->id);
+        // Récupérer les transactions où l'utilisateur est l'expéditeur
+        $queryExpediteur = Transaction::where('id_utilisateur', $utilisateur->id);
+
+        // Récupérer les transactions de transfert où l'utilisateur est le destinataire
+        $queryDestinataire = Transaction::where('type', 'transfert')
+            ->whereHas('transfert', function ($q) use ($utilisateur) {
+                $q->where('numero_telephone_destinataire', $utilisateur->numero_telephone);
+            });
+
+        // Utiliser union pour combiner les résultats
+        $query = $queryExpediteur->union($queryDestinataire);
 
         if (isset($filters['type']) && $filters['type'] !== 'tous') {
             $query->where('type', $filters['type']);
@@ -54,27 +64,50 @@ class PortefeuilleService implements PortefeuilleServiceInterface
 
         $transactions = $query->with(['transfert', 'paiement.marchand'])
                               ->orderBy('date_transaction', 'desc')
-                              ->paginate($limite, ['*'], 'page', $page);
+                              ->get(); // On récupère d'abord tous les résultats
 
-        $data = $transactions->map(function ($transaction) {
+        // Grouper et paginer manuellement pour éviter les problèmes avec union
+        $allTransactions = $transactions->sortByDesc('date_transaction');
+        $paginatedTransactions = collect($allTransactions)->forPage($page, $limite);
+        $totalCount = $allTransactions->count();
+
+        $data = $transactions->map(function ($transaction) use ($utilisateur) {
             $destinataire = null;
+            $expediteur = null;
             $marchand = null;
+            $montantAffiche = $transaction->montant;
+            $typeOperation = 'debit'; // Par défaut débit
 
             if ($transaction->type === 'transfert') {
                 $transfert = $transaction->transfert;
                 if ($transfert) {
-                    $destinataire = [
-                        'numeroTelephone' => $transfert->numero_telephone_destinataire,
-                        'nom' => $transfert->nom_destinataire,
-                    ];
+                    // Vérifier si l'utilisateur est l'expéditeur ou le destinataire
+                    if ($transfert->id_utilisateur_expediteur === $utilisateur->id) {
+                        // L'utilisateur est l'expéditeur -> débit
+                        $typeOperation = 'debit';
+                        $destinataire = [
+                            'numeroTelephone' => $transfert->numero_telephone_destinataire,
+                            'nom' => $transfert->nom_destinataire,
+                        ];
+                    } else {
+                        // L'utilisateur est le destinataire -> crédit
+                        $typeOperation = 'credit';
+                        $expediteur = [
+                            'numeroTelephone' => $transfert->numero_telephone_expediteur ?? 'Inconnu',
+                            'nom' => $transfert->nom_expediteur ?? 'Inconnu',
+                        ];
+                    }
                 } elseif ($transaction->numero_telephone_destinataire && $transaction->nom_destinataire) {
                     // Fallback to transaction fields if transfert relation is null
+                    $typeOperation = 'debit'; // Par défaut débit si pas d'info détaillée
                     $destinataire = [
                         'numeroTelephone' => $transaction->numero_telephone_destinataire,
                         'nom' => $transaction->nom_destinataire,
                     ];
                 }
             } elseif ($transaction->type === 'paiement') {
+                // Les paiements sont toujours des débits pour l'utilisateur
+                $typeOperation = 'debit';
                 $paiement = $transaction->paiement;
                 if ($paiement && $paiement->marchand) {
                     $marchand = [
@@ -90,11 +123,17 @@ class PortefeuilleService implements PortefeuilleServiceInterface
                 }
             }
 
+            // Appliquer le signe selon le type d'opération
+            $montantAffiche = $typeOperation === 'credit' ? '+' . $transaction->montant : '-' . $transaction->montant;
+
             return [
                 'idTransaction' => $transaction->id,
                 'type' => $transaction->type,
-                'montant' => $transaction->montant,
+                'montant' => $montantAffiche,
+                'montantNumerique' => $transaction->montant, // Garder le montant numérique pour les calculs
                 'devise' => $transaction->devise,
+                'typeOperation' => $typeOperation, // 'debit' ou 'credit'
+                'expediteur' => $expediteur,
                 'destinataire' => $destinataire,
                 'marchand' => $marchand,
                 'statut' => $transaction->statut,
@@ -109,10 +148,10 @@ class PortefeuilleService implements PortefeuilleServiceInterface
             'data' => [
                 'transactions' => $data,
                 'pagination' => [
-                    'pageActuelle' => $transactions->currentPage(),
-                    'totalPages' => $transactions->lastPage(),
-                    'totalElements' => $transactions->total(),
-                    'elementsParPage' => $transactions->perPage(),
+                    'pageActuelle' => $page,
+                    'totalPages' => ceil($totalCount / $limite),
+                    'totalElements' => $totalCount,
+                    'elementsParPage' => $limite,
                 ]
             ]
         ];

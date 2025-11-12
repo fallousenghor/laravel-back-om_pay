@@ -19,11 +19,18 @@ class TransfertController extends Controller
 
     /**
      * @OA\Post(
-     *     path="/transfert/initier",
+     *     path="/{numeroCompte}/transfert/initier",
      *     summary="Initier un transfert",
      *     description="Crée une demande de transfert d'argent",
      *     tags={"Transferts"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="numeroCompte",
+     *         in="path",
+     *         description="Numéro de compte de l'utilisateur",
+     *         required=true,
+     *         @OA\Schema(type="string", example="7735434534")
+     *     ),
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
@@ -56,9 +63,17 @@ class TransfertController extends Controller
      *     )
      * )
      */
-    public function initierTransfert(InitierTransfertRequest $request)
+    public function initierTransfert(InitierTransfertRequest $request, $numeroCompte)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
         $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
         $data = $request->validated();
         // Map the field names to match what the service expects
         $data['telephoneDestinataire'] = $data['numeroTelephoneDestinataire'];
@@ -69,11 +84,18 @@ class TransfertController extends Controller
 
     /**
      * @OA\Post(
-     *     path="/transfert/{idTransfert}/confirmer",
+     *     path="/{numeroCompte}/transfert/{idTransfert}/confirmer",
      *     summary="Confirmer un transfert",
      *     description="Confirme et exécute un transfert en attente",
      *     tags={"Transferts"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="numeroCompte",
+     *         in="path",
+     *         description="Numéro de compte de l'utilisateur",
+     *         required=true,
+     *         @OA\Schema(type="string", example="7735434534")
+     *     ),
      *     @OA\Parameter(
      *         name="idTransfert",
      *         in="path",
@@ -110,20 +132,35 @@ class TransfertController extends Controller
      *     )
      * )
      */
-    public function confirmerTransfert(ConfirmerTransfertRequest $request, $idTransfert)
+    public function confirmerTransfert(ConfirmerTransfertRequest $request, $numeroCompte, $idTransfert)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
         $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
         $result = $this->transfertService->confirmerTransfert($utilisateur, $idTransfert, $request->codePin);
         return $this->responseFromResult($result);
     }
 
     /**
      * @OA\Delete(
-     *     path="/transfert/{idTransfert}/annuler",
+     *     path="/{numeroCompte}/transfert/{idTransfert}/annuler",
      *     summary="Annuler un transfert",
      *     description="Annule un transfert en attente",
      *     tags={"Transferts"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="numeroCompte",
+     *         in="path",
+     *         description="Numéro de compte de l'utilisateur",
+     *         required=true,
+     *         @OA\Schema(type="string", example="7735434534")
+     *     ),
      *     @OA\Parameter(
      *         name="idTransfert",
      *         in="path",
@@ -153,9 +190,17 @@ class TransfertController extends Controller
      *     )
      * )
      */
-    public function annulerTransfert(Request $request, $idTransfert)
+    public function annulerTransfert(Request $request, $numeroCompte, $idTransfert)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
         $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
         $result = $this->transfertService->annulerTransfert($utilisateur, $idTransfert);
         return $this->responseFromResult($result);
     }

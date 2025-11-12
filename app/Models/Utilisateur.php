@@ -88,6 +88,16 @@ class Utilisateur extends Model
         return $this->hasMany(Paiement::class, 'id_utilisateur');
     }
 
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class, 'id_utilisateur');
+    }
+
+    public function qrCodes(): HasMany
+    {
+        return $this->hasMany(QRCode::class, 'id_utilisateur');
+    }
+
     // Scopes
     public function scopeActifs($query)
     {

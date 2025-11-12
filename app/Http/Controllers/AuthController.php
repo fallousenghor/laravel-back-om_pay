@@ -210,12 +210,8 @@ class AuthController extends Controller
     *             @OA\Property(property="success", type="boolean", example=true),
     *             @OA\Property(property="message", type="string", example="Connexion réussie"),
     *             @OA\Property(property="data", type="object",
-    *                 @OA\Property(property="session_token", type="string", example="PMOfGqub4qI1LRynqATixgXiug0PnrCjgEF7VTJqOcazKv0XrFTEnLANQJkhnBbK"),
-    *                 @OA\Property(property="qr_code", type="object",
-    *                     @OA\Property(property="id", type="string", example="uuid"),
-    *                     @OA\Property(property="data", type="string", example="json_encoded_qr_data"),
-    *                     @OA\Property(property="expires_at", type="string", format="date-time", example="2035-11-11T12:16:47.954Z")
-    *                 )
+    *                 @OA\Property(property="token", type="string", example="PMOfGqub4qI1LRynqATixgXiug0PnrCjgEF7VTJqOcazKv0XrFTEnLANQJkhnBbK"),
+    *                 @OA\Property(property="refresh_token", type="string", example="refresh_token_here")
     *             )
     *         )
     *     ),
@@ -239,13 +235,13 @@ class AuthController extends Controller
 
             $result = $this->authService->login($request->numero_telephone, $request->code_pin);
 
-            // Retourner le token de session et le QR code
+            // Retourner seulement le token et le refresh token
             return response()->json([
                 'success' => true,
                 'message' => 'Connexion réussie',
                 'data' => [
-                    'session_token' => $result['session_token'] ?? null,
-                    'qr_code' => $result['qr_code'] ?? null
+                    'token' => $result['session_token'] ?? null,
+                    'refresh_token' => $result['refresh_token'] ?? null
                 ]
             ]);
         } catch (Exception $e) {
@@ -299,17 +295,32 @@ class AuthController extends Controller
     }
 
     // 1.6 Consulter Profil
-    public function consulterProfil(Request $request)
+    public function consulterProfil(Request $request, $numeroCompte)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
         $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
         $result = $this->userService->consulterProfil($utilisateur);
         return $this->responseFromResult($result);
     }
 
     // 1.7 Mettre à jour Profil
-    public function mettreAJourProfil(MettreAJourProfilRequest $request)
+    public function mettreAJourProfil(MettreAJourProfilRequest $request, $numeroCompte)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
         $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
 
         // Vérifier le PIN avant mise à jour
         if (!$this->securityService->verifierPin($utilisateur, $request->codePin)) {
@@ -321,18 +332,261 @@ class AuthController extends Controller
     }
 
     // 1.8 Changer le Code PIN
-    public function changerPin(ChangerPinRequest $request)
+    public function changerPin(ChangerPinRequest $request, $numeroCompte)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
         $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
         $result = $this->securityService->changerPin($utilisateur, $request->ancienPin, $request->nouveauPin);
         return $this->responseFromResult($result);
     }
 
     // 1.9 Activer la Biométrie
-    public function activerBiometrie(ActiverBiometrieRequest $request)
+    public function activerBiometrie(ActiverBiometrieRequest $request, $numeroCompte)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
         $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
         $result = $this->securityService->activerBiometrie($utilisateur, $request->codePin, $request->jetonBiometrique);
         return $this->responseFromResult($result);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/{numeroCompte}/dashboard",
+     *     summary="Tableau de bord utilisateur",
+     *     description="Récupère toutes les informations de l'utilisateur connecté : profil, solde, transactions récentes",
+     *     tags={"Dashboard"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="numeroCompte",
+     *         in="path",
+     *         description="Numéro de compte de l'utilisateur",
+     *         required=true,
+     *         @OA\Schema(type="string", example="7735434534")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Informations du tableau de bord récupérées avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="utilisateur", type="object",
+     *                     @OA\Property(property="id", type="string"),
+     *                     @OA\Property(property="numero_telephone", type="string"),
+     *                     @OA\Property(property="prenom", type="string"),
+     *                     @OA\Property(property="nom", type="string"),
+     *                     @OA\Property(property="email", type="string"),
+     *                     @OA\Property(property="statut_kyc", type="string"),
+     *                     @OA\Property(property="biometrie_activee", type="boolean"),
+     *                     @OA\Property(property="date_creation", type="string", format="date-time")
+     *                 ),
+     *                 @OA\Property(property="portefeuille", type="object",
+     *                     @OA\Property(property="solde", type="number", format="float"),
+     *                     @OA\Property(property="devise", type="string")
+     *                 ),
+     *                 @OA\Property(property="qr_code", type="object",
+     *                     @OA\Property(property="id", type="string"),
+     *                     @OA\Property(property="donnees", type="string"),
+     *                     @OA\Property(property="date_generation", type="string", format="date-time"),
+     *                     @OA\Property(property="date_expiration", type="string", format="date-time")
+     *                 ),
+     *                 @OA\Property(property="transactions_recentes", type="array", @OA\Items(
+     *                     @OA\Property(property="id", type="string", example="01HN1234567890ABCDEF"),
+     *                     @OA\Property(property="type", type="string", example="transfert"),
+     *                     @OA\Property(property="montant", type="string", example="-5000", description="Montant avec signe +/-"),
+     *                     @OA\Property(property="montantNumerique", type="number", format="float", example=5000, description="Montant numérique sans signe"),
+     *                     @OA\Property(property="devise", type="string", example="XOF"),
+     *                     @OA\Property(property="typeOperation", type="string", enum={"debit", "credit"}, example="debit"),
+     *                     @OA\Property(property="expediteur", type="object", nullable=true,
+     *                         @OA\Property(property="numeroTelephone", type="string", example="771234567"),
+     *                         @OA\Property(property="nom", type="string", example="John Doe")
+     *                     ),
+     *                     @OA\Property(property="destinataire", type="object", nullable=true,
+     *                         @OA\Property(property="numeroTelephone", type="string", example="781234567"),
+     *                         @OA\Property(property="nom", type="string", example="Jane Smith")
+     *                     ),
+     *                     @OA\Property(property="marchand", type="object", nullable=true,
+     *                         @OA\Property(property="nom", type="string", example="Boutique Express"),
+     *                         @OA\Property(property="categorie", type="string", example="Alimentation")
+     *                     ),
+     *                     @OA\Property(property="statut", type="string", example="reussi"),
+     *                     @OA\Property(property="dateTransaction", type="string", format="date-time"),
+     *                     @OA\Property(property="reference", type="string", example="OM20251111131953ABC123"),
+     *                     @OA\Property(property="frais", type="number", format="float", example=0)
+     *                 ))
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Non authentifié",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Token invalide")
+     *         )
+     *     )
+     * )
+     */
+    public function dashboard(Request $request, $numeroCompte)
+    {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
+        $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
+        try {
+
+            // Récupérer les informations de l'utilisateur
+            $userData = [
+                'id' => $utilisateur->id,
+                'numero_compte' => $utilisateur->numero_telephone, // Numéro de compte pour les routes
+                'numero_telephone' => $utilisateur->numero_telephone,
+                'prenom' => $utilisateur->prenom,
+                'nom' => $utilisateur->nom,
+                'email' => $utilisateur->email,
+                'statut_kyc' => $utilisateur->statut_kyc,
+                'biometrie_activee' => $utilisateur->biometrie_activee,
+                'date_creation' => $utilisateur->date_creation,
+                'derniere_connexion' => $utilisateur->derniere_connexion,
+            ];
+
+            // Récupérer les informations du portefeuille
+            $portefeuille = $utilisateur->portefeuille;
+            $walletData = $portefeuille ? [
+                'solde' => $portefeuille->solde,
+                'devise' => $portefeuille->devise,
+                'derniere_mise_a_jour' => $portefeuille->derniere_mise_a_jour,
+            ] : null;
+
+            // Récupérer le QR code actif de l'utilisateur
+            $qrCode = $utilisateur->qrCodes()
+                ->where('utilise', false)
+                ->where('date_expiration', '>', now())
+                ->orderBy('date_generation', 'desc')
+                ->first();
+
+            $qrCodeData = $qrCode ? [
+                'id' => $qrCode->id,
+                'donnees' => $qrCode->donnees,
+                'date_generation' => $qrCode->date_generation,
+                'date_expiration' => $qrCode->date_expiration,
+            ] : null;
+
+            // Récupérer les 5 dernières transactions avec logique améliorée (débits/crédits + expéditeur/destinataire)
+            $queryExpediteur = \App\Models\Transaction::where('id_utilisateur', $utilisateur->id);
+            $queryDestinataire = \App\Models\Transaction::where('type', 'transfert')
+                ->whereHas('transfert', function ($q) use ($utilisateur) {
+                    $q->where('numero_telephone_destinataire', $utilisateur->numero_telephone);
+                });
+
+            $recentTransactions = $queryExpediteur->union($queryDestinataire)
+                ->with(['transfert', 'paiement.marchand'])
+                ->orderBy('date_transaction', 'desc')
+                ->limit(5)
+                ->get()
+                ->map(function ($transaction) use ($utilisateur) {
+                    $destinataire = null;
+                    $expediteur = null;
+                    $marchand = null;
+                    $montantAffiche = $transaction->montant;
+                    $typeOperation = 'debit'; // Par défaut débit
+
+                    if ($transaction->type === 'transfert') {
+                        $transfert = $transaction->transfert;
+                        if ($transfert) {
+                            // Vérifier si l'utilisateur est l'expéditeur ou le destinataire
+                            if ($transfert->id_utilisateur_expediteur === $utilisateur->id) {
+                                // L'utilisateur est l'expéditeur -> débit
+                                $typeOperation = 'debit';
+                                $destinataire = [
+                                    'numeroTelephone' => $transfert->numero_telephone_destinataire,
+                                    'nom' => $transfert->nom_destinataire,
+                                ];
+                            } else {
+                                // L'utilisateur est le destinataire -> crédit
+                                $typeOperation = 'credit';
+                                $expediteur = [
+                                    'numeroTelephone' => $transfert->numero_telephone_expediteur ?? 'Inconnu',
+                                    'nom' => $transfert->nom_expediteur ?? 'Inconnu',
+                                ];
+                            }
+                        } elseif ($transaction->numero_telephone_destinataire && $transaction->nom_destinataire) {
+                            // Fallback to transaction fields if transfert relation is null
+                            $typeOperation = 'debit'; // Par défaut débit si pas d'info détaillée
+                            $destinataire = [
+                                'numeroTelephone' => $transaction->numero_telephone_destinataire,
+                                'nom' => $transaction->nom_destinataire,
+                            ];
+                        }
+                    } elseif ($transaction->type === 'paiement') {
+                        // Les paiements sont toujours des débits pour l'utilisateur
+                        $typeOperation = 'debit';
+                        $paiement = $transaction->paiement;
+                        if ($paiement && $paiement->marchand) {
+                            $marchand = [
+                                'nom' => $paiement->marchand->nom,
+                                'categorie' => $transaction->categorie_marchand ?? 'General',
+                            ];
+                        } elseif ($transaction->nom_marchand && $transaction->categorie_marchand) {
+                            // Fallback to transaction fields if paiement relation is null
+                            $marchand = [
+                                'nom' => $transaction->nom_marchand,
+                                'categorie' => $transaction->categorie_marchand,
+                            ];
+                        }
+                    }
+
+                    // Appliquer le signe selon le type d'opération
+                    $montantAffiche = $typeOperation === 'credit' ? '+' . $transaction->montant : '-' . $transaction->montant;
+
+                    return [
+                        'id' => $transaction->id,
+                        'type' => $transaction->type,
+                        'montant' => $montantAffiche,
+                        'montantNumerique' => $transaction->montant, // Garder le montant numérique pour les calculs
+                        'devise' => $transaction->devise,
+                        'typeOperation' => $typeOperation, // 'debit' ou 'credit'
+                        'expediteur' => $expediteur,
+                        'destinataire' => $destinataire,
+                        'marchand' => $marchand,
+                        'statut' => $transaction->statut,
+                        'dateTransaction' => $transaction->date_transaction->toISOString(),
+                        'reference' => $transaction->reference,
+                        'frais' => $transaction->frais,
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'utilisateur' => $userData,
+                    'portefeuille' => $walletData,
+                    'qr_code' => $qrCodeData,
+                    'transactions_recentes' => $recentTransactions,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des données du tableau de bord: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

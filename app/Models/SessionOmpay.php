@@ -14,6 +14,7 @@ class SessionOmpay extends Model
     protected $fillable = [
         'utilisateur_id',
         'token',
+        'refresh_token',
         'last_activity'
     ];
 

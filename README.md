@@ -70,24 +70,3 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 # OMPAY-Orange
 # OMPAY-Orange
 
- // Paiements Marchands
-    Route::prefix('paiement')->group(function () {
-        Route::get('categories', [PaiementController::class, 'listerCategories']);
-        Route::post('scanner-qr', [PaiementController::class, 'scannerQR']);
-        Route::post('saisir-code', [PaiementController::class, 'saisirCode']);
-        Route::post('initier-paiement', [PaiementController::class, 'initierPaiement']);
-        Route::post('{idPaiement}/confirmer-paiement', [PaiementController::class, 'confirmerPaiement']);
-        Route::delete('{idPaiement}/annuler-paiement', [PaiementController::class, 'annulerPaiement']);
-    });
-
-    // Contacts
-    Route::prefix('contact')->group(function () {
-        Route::get('liste', [ContactController::class, 'listerContacts']);
-        Route::post('ajouter', [ContactController::class, 'ajouterContact']);
-    });
-  Route::prefix('utilisateurs')->group(function () {
-        Route::get('profil', [AuthController::class, 'consulterProfil']);
-        Route::put('profil', [AuthController::class, 'mettreAJourProfil']);
-        Route::post('changer-pin', [AuthController::class, 'changerPin']);
-        Route::post('activer-biometrie', [AuthController::class, 'activerBiometrie']);
-    });

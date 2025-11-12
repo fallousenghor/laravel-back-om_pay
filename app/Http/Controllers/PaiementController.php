@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Interfaces\PaiementServiceInterface;
 use App\Http\Requests\ScannerQRRequest;
 use App\Http\Requests\SaisirCodeRequest;
+use App\Http\Requests\SaisirNumeroTelephoneRequest;
 use App\Http\Requests\InitierPaiementRequest;
 use App\Http\Requests\ConfirmerPaiementRequest;
 use Illuminate\Http\Request;
@@ -21,11 +22,18 @@ class PaiementController extends Controller
 
     /**
      * @OA\Post(
-     *     path="/paiement/scanner-qr",
+     *     path="/{numeroCompte}/paiement/scanner-qr",
      *     summary="Scanner un QR code",
      *     description="Scanne et décode un QR code de paiement marchand",
      *     tags={"Paiements"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="numeroCompte",
+     *         in="path",
+     *         description="Numéro de compte de l'utilisateur",
+     *         required=true,
+     *         @OA\Schema(type="string", example="7735434534")
+     *     ),
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
@@ -55,19 +63,35 @@ class PaiementController extends Controller
      *     )
      * )
      */
-    public function scannerQR(ScannerQRRequest $request)
+    public function scannerQR(ScannerQRRequest $request, $numeroCompte)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
+        $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
         $result = $this->paiementService->scannerQR($request->donneesQR);
         return $this->responseFromResult($result);
     }
 
     /**
      * @OA\Post(
-     *     path="/paiement/saisir-code",
+     *     path="/{numeroCompte}/paiement/saisir-code",
      *     summary="Saisir un code de paiement",
      *     description="Saisit manuellement un code de paiement marchand",
      *     tags={"Paiements"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="numeroCompte",
+     *         in="path",
+     *         description="Numéro de compte de l'utilisateur",
+     *         required=true,
+     *         @OA\Schema(type="string", example="7735434534")
+     *     ),
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
@@ -105,21 +129,102 @@ class PaiementController extends Controller
      *     )
      * )
      */
-    public function saisirCode(SaisirCodeRequest $request)
+    public function saisirCode(SaisirCodeRequest $request, $numeroCompte)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
         $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
         $result = $this->paiementService->saisirCode($utilisateur, $request->code, $request->montant);
+        return $this->responseFromResult($result);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/{numeroCompte}/paiement/saisir-numero-telephone",
+     *     summary="Saisir un numéro de téléphone pour paiement",
+     *     description="Saisit manuellement un numéro de téléphone marchand pour effectuer un paiement",
+     *     tags={"Paiements"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="numeroCompte",
+     *         in="path",
+     *         description="Numéro de compte de l'utilisateur",
+     *         required=true,
+     *         @OA\Schema(type="string", example="7735434534")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"numeroTelephone","montant"},
+     *             @OA\Property(property="numeroTelephone", type="string", example="+221771234567", description="Numéro de téléphone du marchand (avec ou sans préfixe pays)"),
+     *             @OA\Property(property="montant", type="number", format="float", example=5000, description="Montant du paiement en XOF")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Numéro de téléphone validé",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="idPaiement", type="string", example="OM20251111131953ABC123"),
+     *                 @OA\Property(property="marchand", type="object",
+     *                     @OA\Property(property="idMarchand", type="string"),
+     *                     @OA\Property(property="nom", type="string"),
+     *                     @OA\Property(property="logo", type="string", nullable=true)
+     *                 ),
+     *                 @OA\Property(property="montant", type="number", format="float", example=5000),
+     *                 @OA\Property(property="devise", type="string", example="XOF"),
+     *                 @OA\Property(property="dateExpiration", type="string", format="date-time"),
+     *                 @OA\Property(property="valide", type="boolean", example=true)
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Numéro de téléphone marchand invalide",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Numéro de téléphone marchand invalide")
+     *         )
+     *     )
+     * )
+     */
+    public function saisirNumeroTelephone(SaisirNumeroTelephoneRequest $request, $numeroCompte)
+    {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
+        $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
+        $result = $this->paiementService->saisirNumeroTelephone($utilisateur, $request->numeroTelephone, $request->montant);
         return $this->responseFromResult($result);
     }
 
 
     /**
      * @OA\Post(
-     *     path="/paiement/{idPaiement}/confirmer",
+     *     path="/{numeroCompte}/paiement/{idPaiement}/confirmer",
      *     summary="Confirmer un paiement",
      *     description="Confirme et exécute un paiement en attente",
      *     tags={"Paiements"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="numeroCompte",
+     *         in="path",
+     *         description="Numéro de compte de l'utilisateur",
+     *         required=true,
+     *         @OA\Schema(type="string", example="7735434534")
+     *     ),
      *     @OA\Parameter(
      *         name="idPaiement",
      *         in="path",
@@ -157,20 +262,35 @@ class PaiementController extends Controller
      *     )
      * )
      */
-    public function confirmerPaiement(ConfirmerPaiementRequest $request, $idPaiement)
+    public function confirmerPaiement(ConfirmerPaiementRequest $request, $numeroCompte, $idPaiement)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
         $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
         $result = $this->paiementService->confirmerPaiement($utilisateur, $idPaiement, $request->codePin, $request->montant);
         return $this->responseFromResult($result);
     }
 
     /**
      * @OA\Delete(
-     *     path="/paiement/{idPaiement}/annuler",
+     *     path="/{numeroCompte}/paiement/{idPaiement}/annuler",
      *     summary="Annuler un paiement",
      *     description="Annule un paiement en attente",
      *     tags={"Paiements"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="numeroCompte",
+     *         in="path",
+     *         description="Numéro de compte de l'utilisateur",
+     *         required=true,
+     *         @OA\Schema(type="string", example="7735434534")
+     *     ),
      *     @OA\Parameter(
      *         name="idPaiement",
      *         in="path",
@@ -197,12 +317,28 @@ class PaiementController extends Controller
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Paiement déjà traité")
      *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Numéro de compte invalide",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Numéro de compte invalide")
+     *         )
      *     )
      * )
      */
-    public function annulerPaiement(Request $request, $idPaiement)
+    public function annulerPaiement(Request $request, $numeroCompte, $idPaiement)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
         $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
         $result = $this->paiementService->annulerPaiement($utilisateur, $idPaiement);
         return $this->responseFromResult($result);
     }

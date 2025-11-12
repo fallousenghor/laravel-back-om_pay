@@ -227,27 +227,13 @@
                                         },
                                         "data": {
                                             "properties": {
-                                                "session_token": {
+                                                "token": {
                                                     "type": "string",
                                                     "example": "PMOfGqub4qI1LRynqATixgXiug0PnrCjgEF7VTJqOcazKv0XrFTEnLANQJkhnBbK"
                                                 },
-                                                "qr_code": {
-                                                    "properties": {
-                                                        "id": {
-                                                            "type": "string",
-                                                            "example": "uuid"
-                                                        },
-                                                        "data": {
-                                                            "type": "string",
-                                                            "example": "json_encoded_qr_data"
-                                                        },
-                                                        "expires_at": {
-                                                            "type": "string",
-                                                            "format": "date-time",
-                                                            "example": "2035-11-11T12:16:47.954Z"
-                                                        }
-                                                    },
-                                                    "type": "object"
+                                                "refresh_token": {
+                                                    "type": "string",
+                                                    "example": "refresh_token_here"
                                                 }
                                             },
                                             "type": "object"
@@ -337,14 +323,255 @@
                 ]
             }
         },
-        "/paiement/scanner-qr": {
+        "/{numeroCompte}/dashboard": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Tableau de bord utilisateur",
+                "description": "Récupère toutes les informations de l'utilisateur connecté : profil, solde, transactions récentes",
+                "operationId": "6c21ad86100adf4e7c4dab8c8ac77e75",
+                "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte de l'utilisateur",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "7735434534"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Informations du tableau de bord récupérées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "utilisateur": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "numero_telephone": {
+                                                            "type": "string"
+                                                        },
+                                                        "prenom": {
+                                                            "type": "string"
+                                                        },
+                                                        "nom": {
+                                                            "type": "string"
+                                                        },
+                                                        "email": {
+                                                            "type": "string"
+                                                        },
+                                                        "statut_kyc": {
+                                                            "type": "string"
+                                                        },
+                                                        "biometrie_activee": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "date_creation": {
+                                                            "type": "string",
+                                                            "format": "date-time"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "portefeuille": {
+                                                    "properties": {
+                                                        "solde": {
+                                                            "type": "number",
+                                                            "format": "float"
+                                                        },
+                                                        "devise": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "qr_code": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "donnees": {
+                                                            "type": "string"
+                                                        },
+                                                        "date_generation": {
+                                                            "type": "string",
+                                                            "format": "date-time"
+                                                        },
+                                                        "date_expiration": {
+                                                            "type": "string",
+                                                            "format": "date-time"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "transactions_recentes": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "example": "01HN1234567890ABCDEF"
+                                                            },
+                                                            "type": {
+                                                                "type": "string",
+                                                                "example": "transfert"
+                                                            },
+                                                            "montant": {
+                                                                "description": "Montant avec signe +/-",
+                                                                "type": "string",
+                                                                "example": "-5000"
+                                                            },
+                                                            "montantNumerique": {
+                                                                "description": "Montant numérique sans signe",
+                                                                "type": "number",
+                                                                "format": "float",
+                                                                "example": 5000
+                                                            },
+                                                            "devise": {
+                                                                "type": "string",
+                                                                "example": "XOF"
+                                                            },
+                                                            "typeOperation": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "debit",
+                                                                    "credit"
+                                                                ],
+                                                                "example": "debit"
+                                                            },
+                                                            "expediteur": {
+                                                                "properties": {
+                                                                    "numeroTelephone": {
+                                                                        "type": "string",
+                                                                        "example": "771234567"
+                                                                    },
+                                                                    "nom": {
+                                                                        "type": "string",
+                                                                        "example": "John Doe"
+                                                                    }
+                                                                },
+                                                                "type": "object",
+                                                                "nullable": true
+                                                            },
+                                                            "destinataire": {
+                                                                "properties": {
+                                                                    "numeroTelephone": {
+                                                                        "type": "string",
+                                                                        "example": "781234567"
+                                                                    },
+                                                                    "nom": {
+                                                                        "type": "string",
+                                                                        "example": "Jane Smith"
+                                                                    }
+                                                                },
+                                                                "type": "object",
+                                                                "nullable": true
+                                                            },
+                                                            "marchand": {
+                                                                "properties": {
+                                                                    "nom": {
+                                                                        "type": "string",
+                                                                        "example": "Boutique Express"
+                                                                    },
+                                                                    "categorie": {
+                                                                        "type": "string",
+                                                                        "example": "Alimentation"
+                                                                    }
+                                                                },
+                                                                "type": "object",
+                                                                "nullable": true
+                                                            },
+                                                            "statut": {
+                                                                "type": "string",
+                                                                "example": "reussi"
+                                                            },
+                                                            "dateTransaction": {
+                                                                "type": "string",
+                                                                "format": "date-time"
+                                                            },
+                                                            "reference": {
+                                                                "type": "string",
+                                                                "example": "OM20251111131953ABC123"
+                                                            },
+                                                            "frais": {
+                                                                "type": "number",
+                                                                "format": "float",
+                                                                "example": 0
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Token invalide"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/{numeroCompte}/paiement/scanner-qr": {
             "post": {
                 "tags": [
                     "Paiements"
                 ],
                 "summary": "Scanner un QR code",
                 "description": "Scanne et décode un QR code de paiement marchand",
-                "operationId": "cd3e44f3c5e8e95360ef044deb673882",
+                "operationId": "4e9b0413d6ee91b924428e8d65890a86",
+                "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte de l'utilisateur",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "7735434534"
+                        }
+                    }
+                ],
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -425,14 +652,26 @@
                 ]
             }
         },
-        "/paiement/saisir-code": {
+        "/{numeroCompte}/paiement/saisir-code": {
             "post": {
                 "tags": [
                     "Paiements"
                 ],
                 "summary": "Saisir un code de paiement",
                 "description": "Saisit manuellement un code de paiement marchand",
-                "operationId": "a5856aeb315c6d8f8ae0d7ca5c756485",
+                "operationId": "b03402b3f9fcf0bceecf7221319f98bd",
+                "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte de l'utilisateur",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "7735434534"
+                        }
+                    }
+                ],
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -546,15 +785,158 @@
                 ]
             }
         },
-        "/paiement/{idPaiement}/confirmer": {
+        "/{numeroCompte}/paiement/saisir-numero-telephone": {
+            "post": {
+                "tags": [
+                    "Paiements"
+                ],
+                "summary": "Saisir un numéro de téléphone pour paiement",
+                "description": "Saisit manuellement un numéro de téléphone marchand pour effectuer un paiement",
+                "operationId": "b9b38a1bb080a919b70253f8fc5912c5",
+                "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte de l'utilisateur",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "7735434534"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "numeroTelephone",
+                                    "montant"
+                                ],
+                                "properties": {
+                                    "numeroTelephone": {
+                                        "description": "Numéro de téléphone du marchand (avec ou sans préfixe pays)",
+                                        "type": "string",
+                                        "example": "+221771234567"
+                                    },
+                                    "montant": {
+                                        "description": "Montant du paiement en XOF",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 5000
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Numéro de téléphone validé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "idPaiement": {
+                                                    "type": "string",
+                                                    "example": "OM20251111131953ABC123"
+                                                },
+                                                "marchand": {
+                                                    "properties": {
+                                                        "idMarchand": {
+                                                            "type": "string"
+                                                        },
+                                                        "nom": {
+                                                            "type": "string"
+                                                        },
+                                                        "logo": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "montant": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 5000
+                                                },
+                                                "devise": {
+                                                    "type": "string",
+                                                    "example": "XOF"
+                                                },
+                                                "dateExpiration": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "valide": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Numéro de téléphone marchand invalide",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Numéro de téléphone marchand invalide"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/{numeroCompte}/paiement/{idPaiement}/confirmer": {
             "post": {
                 "tags": [
                     "Paiements"
                 ],
                 "summary": "Confirmer un paiement",
                 "description": "Confirme et exécute un paiement en attente",
-                "operationId": "d82940d94e2dc90ef3500620083749c5",
+                "operationId": "2693b3eba5adcd24e7d5b1f3b0738d57",
                 "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte de l'utilisateur",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "7735434534"
+                        }
+                    },
                     {
                         "name": "idPaiement",
                         "in": "path",
@@ -651,15 +1033,25 @@
                 ]
             }
         },
-        "/paiement/{idPaiement}/annuler": {
+        "/{numeroCompte}/paiement/{idPaiement}/annuler": {
             "delete": {
                 "tags": [
                     "Paiements"
                 ],
                 "summary": "Annuler un paiement",
                 "description": "Annule un paiement en attente",
-                "operationId": "d4ec8bd24ced83e334a466bb061d94e8",
+                "operationId": "f5edd1b00b0556ff8e78aeb5511ef6df",
                 "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte de l'utilisateur",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "7735434534"
+                        }
+                    },
                     {
                         "name": "idPaiement",
                         "in": "path",
@@ -722,6 +1114,26 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "description": "Numéro de compte invalide",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Numéro de compte invalide"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -731,14 +1143,26 @@
                 ]
             }
         },
-        "/portefeuille/solde": {
+        "/{numeroCompte}/portefeuille/solde": {
             "get": {
                 "tags": [
                     "Portefeuille"
                 ],
                 "summary": "Consulter le solde",
                 "description": "Récupère le solde actuel du portefeuille OM Pay",
-                "operationId": "5ab522d7ccce5a260f52771e0b920321",
+                "operationId": "49e8248ac091dc36f681590419a4ae4d",
+                "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte de l'utilisateur",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "7735434534"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Solde récupéré avec succès",
@@ -798,15 +1222,25 @@
                 ]
             }
         },
-        "/portefeuille/transactions": {
+        "/{numeroCompte}/portefeuille/transactions": {
             "get": {
                 "tags": [
                     "Portefeuille"
                 ],
                 "summary": "Historique des transactions",
                 "description": "Récupère l'historique des transactions avec filtres optionnels",
-                "operationId": "476c0be4dfd477107df2b74546afbf30",
+                "operationId": "ea98ec36dc94d4d4e55c46007ac7171a",
                 "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte de l'utilisateur",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "7735434534"
+                        }
+                    },
                     {
                         "name": "page",
                         "in": "query",
@@ -882,10 +1316,120 @@
                                                 "transactions": {
                                                     "type": "array",
                                                     "items": {
+                                                        "properties": {
+                                                            "idTransaction": {
+                                                                "type": "string",
+                                                                "example": "01HN1234567890ABCDEF"
+                                                            },
+                                                            "type": {
+                                                                "type": "string",
+                                                                "example": "transfert"
+                                                            },
+                                                            "montant": {
+                                                                "description": "Montant avec signe +/-",
+                                                                "type": "string",
+                                                                "example": "-5000"
+                                                            },
+                                                            "montantNumerique": {
+                                                                "description": "Montant numérique sans signe",
+                                                                "type": "number",
+                                                                "format": "float",
+                                                                "example": 5000
+                                                            },
+                                                            "devise": {
+                                                                "type": "string",
+                                                                "example": "XOF"
+                                                            },
+                                                            "typeOperation": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "debit",
+                                                                    "credit"
+                                                                ],
+                                                                "example": "debit"
+                                                            },
+                                                            "expediteur": {
+                                                                "properties": {
+                                                                    "numeroTelephone": {
+                                                                        "type": "string",
+                                                                        "example": "771234567"
+                                                                    },
+                                                                    "nom": {
+                                                                        "type": "string",
+                                                                        "example": "John Doe"
+                                                                    }
+                                                                },
+                                                                "type": "object",
+                                                                "nullable": true
+                                                            },
+                                                            "destinataire": {
+                                                                "properties": {
+                                                                    "numeroTelephone": {
+                                                                        "type": "string",
+                                                                        "example": "781234567"
+                                                                    },
+                                                                    "nom": {
+                                                                        "type": "string",
+                                                                        "example": "Jane Smith"
+                                                                    }
+                                                                },
+                                                                "type": "object",
+                                                                "nullable": true
+                                                            },
+                                                            "marchand": {
+                                                                "properties": {
+                                                                    "nom": {
+                                                                        "type": "string",
+                                                                        "example": "Boutique Express"
+                                                                    },
+                                                                    "categorie": {
+                                                                        "type": "string",
+                                                                        "example": "Alimentation"
+                                                                    }
+                                                                },
+                                                                "type": "object",
+                                                                "nullable": true
+                                                            },
+                                                            "statut": {
+                                                                "type": "string",
+                                                                "example": "reussi"
+                                                            },
+                                                            "dateTransaction": {
+                                                                "type": "string",
+                                                                "format": "date-time"
+                                                            },
+                                                            "reference": {
+                                                                "type": "string",
+                                                                "example": "OM20251111131953ABC123"
+                                                            },
+                                                            "frais": {
+                                                                "type": "number",
+                                                                "format": "float",
+                                                                "example": 0
+                                                            }
+                                                        },
                                                         "type": "object"
                                                     }
                                                 },
                                                 "pagination": {
+                                                    "properties": {
+                                                        "pageActuelle": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        },
+                                                        "totalPages": {
+                                                            "type": "integer",
+                                                            "example": 5
+                                                        },
+                                                        "totalElements": {
+                                                            "type": "integer",
+                                                            "example": 100
+                                                        },
+                                                        "elementsParPage": {
+                                                            "type": "integer",
+                                                            "example": 20
+                                                        }
+                                                    },
                                                     "type": "object"
                                                 }
                                             },
@@ -905,15 +1449,25 @@
                 ]
             }
         },
-        "/portefeuille/transactions/{idTransaction}": {
+        "/{numeroCompte}/portefeuille/transactions/{idTransaction}": {
             "get": {
                 "tags": [
                     "Portefeuille"
                 ],
                 "summary": "Détails d'une transaction",
                 "description": "Récupère les détails d'une transaction spécifique",
-                "operationId": "e204d6636bb505001741b4ecbbe60f37",
+                "operationId": "5defd98fcc63ca7fd7921a85667cbf69",
                 "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte de l'utilisateur",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "7735434534"
+                        }
+                    },
                     {
                         "name": "idTransaction",
                         "in": "path",
@@ -991,14 +1545,26 @@
                 ]
             }
         },
-        "/transfert/initier": {
+        "/{numeroCompte}/transfert/initier": {
             "post": {
                 "tags": [
                     "Transferts"
                 ],
                 "summary": "Initier un transfert",
                 "description": "Crée une demande de transfert d'argent",
-                "operationId": "32e62e9880fd56519d8e39003d8fbd57",
+                "operationId": "02feb6468ab464f229a3b801da09d64f",
+                "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte de l'utilisateur",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "7735434534"
+                        }
+                    }
+                ],
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -1093,15 +1659,25 @@
                 ]
             }
         },
-        "/transfert/{idTransfert}/confirmer": {
+        "/{numeroCompte}/transfert/{idTransfert}/confirmer": {
             "post": {
                 "tags": [
                     "Transferts"
                 ],
                 "summary": "Confirmer un transfert",
                 "description": "Confirme et exécute un transfert en attente",
-                "operationId": "b7967cdd0d4a8fc2bcfbecd19d56b776",
+                "operationId": "b6ab515041663555260a83cb8e8b4bc4",
                 "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte de l'utilisateur",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "7735434534"
+                        }
+                    },
                     {
                         "name": "idTransfert",
                         "in": "path",
@@ -1192,15 +1768,25 @@
                 ]
             }
         },
-        "/transfert/{idTransfert}/annuler": {
+        "/{numeroCompte}/transfert/{idTransfert}/annuler": {
             "delete": {
                 "tags": [
                     "Transferts"
                 ],
                 "summary": "Annuler un transfert",
                 "description": "Annule un transfert en attente",
-                "operationId": "3b815a15be06b21f56778b72897d448e",
+                "operationId": "3ddc8f80eb351cf7ce532435c167f190",
                 "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte de l'utilisateur",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "7735434534"
+                        }
+                    },
                     {
                         "name": "idTransfert",
                         "in": "path",
@@ -1286,6 +1872,10 @@
         {
             "name": "Authentification",
             "description": "Authentification"
+        },
+        {
+            "name": "Dashboard",
+            "description": "Dashboard"
         },
         {
             "name": "Paiements",

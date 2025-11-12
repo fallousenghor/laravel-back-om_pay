@@ -17,11 +17,18 @@ class PortefeuilleController extends Controller
 
     /**
      * @OA\Get(
-     *     path="/portefeuille/solde",
+     *     path="/{numeroCompte}/portefeuille/solde",
      *     summary="Consulter le solde",
      *     description="Récupère le solde actuel du portefeuille OM Pay",
      *     tags={"Portefeuille"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="numeroCompte",
+     *         in="path",
+     *         description="Numéro de compte de l'utilisateur",
+     *         required=true,
+     *         @OA\Schema(type="string", example="7735434534")
+     *     ),
      *     @OA\Response(
      *         response=200,
      *         description="Solde récupéré avec succès",
@@ -43,9 +50,17 @@ class PortefeuilleController extends Controller
      *     )
      * )
      */
-    public function consulterSolde(Request $request)
+    public function consulterSolde(Request $request, $numeroCompte)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
         $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
         $result = $this->portefeuilleService->consulterSolde($utilisateur);
 
         return $this->responseFromResult($result);
@@ -53,11 +68,18 @@ class PortefeuilleController extends Controller
 
     /**
      * @OA\Get(
-     *     path="/portefeuille/transactions",
+     *     path="/{numeroCompte}/portefeuille/transactions",
      *     summary="Historique des transactions",
      *     description="Récupère l'historique des transactions avec filtres optionnels",
      *     tags={"Portefeuille"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="numeroCompte",
+     *         in="path",
+     *         description="Numéro de compte de l'utilisateur",
+     *         required=true,
+     *         @OA\Schema(type="string", example="7735434534")
+     *     ),
      *     @OA\Parameter(
      *         name="page",
      *         in="query",
@@ -106,16 +128,52 @@ class PortefeuilleController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="object",
-     *                 @OA\Property(property="transactions", type="array", @OA\Items(type="object")),
-     *                 @OA\Property(property="pagination", type="object")
+     *                 @OA\Property(property="transactions", type="array", @OA\Items(
+     *                     @OA\Property(property="idTransaction", type="string", example="01HN1234567890ABCDEF"),
+     *                     @OA\Property(property="type", type="string", example="transfert"),
+     *                     @OA\Property(property="montant", type="string", example="-5000", description="Montant avec signe +/-"),
+     *                     @OA\Property(property="montantNumerique", type="number", format="float", example=5000, description="Montant numérique sans signe"),
+     *                     @OA\Property(property="devise", type="string", example="XOF"),
+     *                     @OA\Property(property="typeOperation", type="string", enum={"debit", "credit"}, example="debit"),
+     *                     @OA\Property(property="expediteur", type="object", nullable=true,
+     *                         @OA\Property(property="numeroTelephone", type="string", example="771234567"),
+     *                         @OA\Property(property="nom", type="string", example="John Doe")
+     *                     ),
+     *                     @OA\Property(property="destinataire", type="object", nullable=true,
+     *                         @OA\Property(property="numeroTelephone", type="string", example="781234567"),
+     *                         @OA\Property(property="nom", type="string", example="Jane Smith")
+     *                     ),
+     *                     @OA\Property(property="marchand", type="object", nullable=true,
+     *                         @OA\Property(property="nom", type="string", example="Boutique Express"),
+     *                         @OA\Property(property="categorie", type="string", example="Alimentation")
+     *                     ),
+     *                     @OA\Property(property="statut", type="string", example="reussi"),
+     *                     @OA\Property(property="dateTransaction", type="string", format="date-time"),
+     *                     @OA\Property(property="reference", type="string", example="OM20251111131953ABC123"),
+     *                     @OA\Property(property="frais", type="number", format="float", example=0)
+     *                 )),
+     *                 @OA\Property(property="pagination", type="object",
+     *                     @OA\Property(property="pageActuelle", type="integer", example=1),
+     *                     @OA\Property(property="totalPages", type="integer", example=5),
+     *                     @OA\Property(property="totalElements", type="integer", example=100),
+     *                     @OA\Property(property="elementsParPage", type="integer", example=20)
+     *                 )
      *             )
      *         )
      *     )
      * )
      */
-    public function historiqueTransactions(HistoriqueTransactionsRequest $request)
+    public function historiqueTransactions(HistoriqueTransactionsRequest $request, $numeroCompte)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
         $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
         $page = $request->get('page', 1);
         $limite = $request->get('limite', 20);
 
@@ -128,11 +186,18 @@ class PortefeuilleController extends Controller
 
     /**
      * @OA\Get(
-     *     path="/portefeuille/transactions/{idTransaction}",
+     *     path="/{numeroCompte}/portefeuille/transactions/{idTransaction}",
      *     summary="Détails d'une transaction",
      *     description="Récupère les détails d'une transaction spécifique",
      *     tags={"Portefeuille"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="numeroCompte",
+     *         in="path",
+     *         description="Numéro de compte de l'utilisateur",
+     *         required=true,
+     *         @OA\Schema(type="string", example="7735434534")
+     *     ),
      *     @OA\Parameter(
      *         name="idTransaction",
      *         in="path",
@@ -164,9 +229,17 @@ class PortefeuilleController extends Controller
      *     )
      * )
      */
-    public function detailsTransaction(Request $request, $idTransaction)
+    public function detailsTransaction(Request $request, $numeroCompte, $idTransaction)
     {
+        // Vérifier que le numéro de compte correspond à l'utilisateur connecté
         $utilisateur = $request->user();
+        if ($utilisateur->numero_telephone !== $numeroCompte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de compte invalide'
+            ], 403);
+        }
+
         $result = $this->portefeuilleService->detailsTransaction($utilisateur, $idTransaction);
 
         return $this->responseFromResult($result);
